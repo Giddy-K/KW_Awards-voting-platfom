@@ -11,10 +11,11 @@ from ..serializers.user import SignupSerializer, UserSerializer
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
     serializer_class = UserSerializer
-    permission_classes = [IsAuthenticated]  # Ensures that only authenticated users can access this view
+    permission_classes = [
+        IsAuthenticated
+    ]  # Ensures that only authenticated users can access this view
     # To allow only admins to create or update users
     # permission_classes = [IsAdminUser]
-
 
 
 class CustomSignup(Signup):

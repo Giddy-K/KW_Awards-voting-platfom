@@ -13,9 +13,7 @@ _DEV_DEFAULTS = {
     "DEBUG": "True",
     "ALLOWED_HOSTS": "localhost,127.0.0.1,[::1],testserver",
     "FRONTEND_URL": "http://localhost:4500",
-    "CORS_ALLOWED_ORIGINS": (
-        "http://localhost:3000,http://localhost:4500,http://localhost:5173"
-    ),
+    "CORS_ALLOWED_ORIGINS": ("http://localhost:3000,http://localhost:4500,http://localhost:5173"),
     # Emails are printed to the console instead of being sent.
     "EMAIL_BACKEND": "django.core.mail.backends.console.EmailBackend",
     "DB_NAME": "vote_app",

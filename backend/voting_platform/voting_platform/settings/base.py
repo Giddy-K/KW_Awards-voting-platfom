@@ -165,9 +165,7 @@ SILENCED_SYSTEM_CHECKS = ["fields.E303"]
 
 # --- Email ------------------------------------------------------------------
 
-EMAIL_BACKEND = env(
-    "EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend"
-)
+EMAIL_BACKEND = env("EMAIL_BACKEND", default="django.core.mail.backends.smtp.EmailBackend")
 EMAIL_FROM = env("EMAIL_FROM", default=None)
 EMAIL_BCC = env("EMAIL_BCC", default=None)
 EMAIL_HOST = env("EMAIL_HOST", default="")
