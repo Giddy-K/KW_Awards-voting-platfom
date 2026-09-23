@@ -139,6 +139,10 @@ USE_I18N = True
 USE_TZ = True
 
 
+# Opt in to Django 6.0's https default for URLField form inputs (admin forms).
+FORMS_URLFIELD_ASSUME_HTTPS = True
+
+
 # --- Static files -----------------------------------------------------------
 
 STATIC_URL = "static/"
