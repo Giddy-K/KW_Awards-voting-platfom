@@ -7,8 +7,24 @@ assumed to run behind a TLS-terminating reverse proxy that sets
 ``X-Forwarded-Proto``.
 """
 
+from django.core.exceptions import ImproperlyConfigured
+
 from .base import *  # noqa: F403
-from .base import MIDDLEWARE, env
+from .base import ALLOWED_HOSTS, DATABASES, FRONTEND_URL, MIDDLEWARE, env
+
+# --- Fail fast on blank required values ------------------------------------
+# (base.py already fails when a variable is missing entirely; a blank value,
+# e.g. copied from .env.example, must not slip through either.)
+
+_required = {
+    "ALLOWED_HOSTS": ALLOWED_HOSTS,
+    "FRONTEND_URL": FRONTEND_URL,
+    "database name (DATABASE_URL or DB_NAME)": DATABASES["default"].get("NAME"),
+    "database user (DATABASE_URL or DB_USER)": DATABASES["default"].get("USER"),
+}
+_missing = [name for name, value in _required.items() if not value]
+if _missing:
+    raise ImproperlyConfigured("Empty required production setting(s): " + ", ".join(_missing))
 
 # --- HTTPS / transport security --------------------------------------------
 
