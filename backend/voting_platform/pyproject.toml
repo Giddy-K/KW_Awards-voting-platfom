@@ -12,6 +12,8 @@ extend-exclude = ["migrations"]
 [tool.ruff.lint]
 # E/W pycodestyle, F pyflakes, I isort, B bugbear, UP pyupgrade, C4 comprehensions
 select = ["E", "F", "W", "I", "B", "UP", "C4"]
+# Line length is enforced by `ruff format`; long strings/comments are left alone.
+ignore = ["E501"]
 
 [tool.ruff.lint.per-file-ignores]
 # Django settings idiom: star-imports from the base settings module.

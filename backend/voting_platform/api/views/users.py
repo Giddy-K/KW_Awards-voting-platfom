@@ -1,9 +1,12 @@
-from rest_framework.permissions import IsAuthenticated, IsAdminUser, AllowAny
-from rest_framework import viewsets
-from ..models import User
-from ..serializers.user import UserSerializer, SignupSerializer
-from drf_yasg.utils import swagger_auto_schema
+from authemail.views import Signup
 from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import viewsets
+from rest_framework.permissions import AllowAny, IsAuthenticated
+
+from ..models import User
+from ..serializers.user import SignupSerializer, UserSerializer
+
 
 class UserViewSet(viewsets.ModelViewSet):
     queryset = User.objects.all()
@@ -13,7 +16,6 @@ class UserViewSet(viewsets.ModelViewSet):
     # permission_classes = [IsAdminUser]
 
 
-from authemail.views import Signup
 
 class CustomSignup(Signup):
     permission_classes = [AllowAny]

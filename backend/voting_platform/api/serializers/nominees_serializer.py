@@ -1,10 +1,12 @@
 """
 Handels the object-to-json and viseversa converts
 """
-from rest_framework import serializers
-from ..models.nominees import Nominees
-from ..models.awards import Awards
 import uuid
+
+from rest_framework import serializers
+
+from ..models.awards import Awards
+from ..models.nominees import Nominees
 
 
 class NomineesSerialiser(serializers.ModelSerializer):
@@ -34,7 +36,7 @@ class NomineesSerialiser(serializers.ModelSerializer):
             category = Awards.objects.filter(name=value).first()
             if not category:
                 raise serializers.ValidationError("Invalid award name"
-                                                  +" or UUID")
+                                                  +" or UUID") from None
 
         # Return the UUID for internal use
         return category

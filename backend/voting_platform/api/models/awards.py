@@ -1,8 +1,10 @@
 """
 Defines the Awards table and its relationship
 """
-from django.db import models
 import uuid
+
+from django.db import models
+
 from .sub_category import SubCategory
 
 
@@ -16,7 +18,7 @@ class Awards(models.Model):
     created_at = models.DateTimeField(auto_now_add=True)
     sub_category = models.ForeignKey(SubCategory, to_field="id",
                                      on_delete=models.CASCADE)
-    
+
     class Meta:
         """
         Indexes by name

@@ -1,5 +1,6 @@
 from rest_framework import generics
 from rest_framework.response import Response
+
 from ..models.nominees import Nominees
 from ..serializers.nominees_serializer import NomineesSerialiser
 

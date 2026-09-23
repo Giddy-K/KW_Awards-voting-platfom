@@ -1,9 +1,9 @@
 """ This module contains code for the user model """
-from django.db import models
-from django.contrib.auth.models import PermissionsMixin
-from authemail.models import EmailUserManager, EmailAbstractUser
 import uuid
-from django.core.validators import MinLengthValidator
+
+from authemail.models import EmailAbstractUser, EmailUserManager
+from django.contrib.auth.models import PermissionsMixin
+from django.db import models
 
 #from django.contrib.auth.models import AbstractUser
 
@@ -24,11 +24,11 @@ class User(EmailAbstractUser, PermissionsMixin):
     profile_photo = models.URLField(blank=True, null=True)
     created_at = models.DateTimeField(auto_now_add=True)
     updated_at = models.DateTimeField(auto_now=True)
-    
+
     USERNAME_FIELD = 'email'
     REQUIRED_FIELDS = ['first_name', 'last_name', 'password']
     objects = EmailUserManager()
-   
+
     def __str__(self):
         return f"{self.first_name} {self.last_name}"
 

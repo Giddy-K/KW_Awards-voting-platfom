@@ -1,8 +1,9 @@
-from rest_framework import generics, filters
-from rest_framework.pagination import PageNumberPagination
 from django_filters.rest_framework import DjangoFilterBackend
-from drf_yasg.utils import swagger_auto_schema
 from drf_yasg import openapi
+from drf_yasg.utils import swagger_auto_schema
+from rest_framework import filters, generics
+from rest_framework.pagination import PageNumberPagination
+
 from ..models.category import Category
 from ..serializers.category_serializer import CategorySerializer
 

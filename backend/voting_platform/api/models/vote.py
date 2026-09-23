@@ -1,10 +1,12 @@
 """
 Defines the Votes table and its relationship
 """
+import uuid
+
 from django.db import models
+
 from .nominees import Nominees
 from .sub_category import SubCategory
-import uuid
 
 
 class Votes(models.Model):

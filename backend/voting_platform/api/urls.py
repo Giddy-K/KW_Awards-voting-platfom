@@ -1,21 +1,14 @@
 
-from django.urls import path, include
-from rest_framework.routers import DefaultRouter
-from .views.users import UserViewSet, CustomSignup
 from authemail import views
-from .views.category_views import CategoryListCreateView, CategoryDetailView
+from django.urls import include, path
+from rest_framework.routers import DefaultRouter
 
-from .views.sub_category_views import SubCategoryListCreateView, SubCategoryDetailView
-
-from .views.nominees_view import (NomineesListCreateView, NomineesDeleteView,
-                                  NomineesUpdateView)
-from .views.awards_view import (AwardsListCreateView, AwardsDeleteView,
-                                AwardsUpdateView)
-
+from .views.awards_view import AwardsDeleteView, AwardsListCreateView, AwardsUpdateView
+from .views.category_views import CategoryDetailView, CategoryListCreateView
+from .views.nominees_view import NomineesDeleteView, NomineesListCreateView, NomineesUpdateView
+from .views.sub_category_views import SubCategoryDetailView, SubCategoryListCreateView
+from .views.users import CustomSignup, UserViewSet
 from .views.vote_views import VoteListCreateView
-
-
-
 
 router = DefaultRouter()
 router.register(r'users', UserViewSet)
@@ -70,6 +63,6 @@ urlpatterns = [
         name='sub_category-list-create'),
     path('subcategories/<uuid:pk>/',
          SubCategoryDetailView.as_view(), name='sub_category-detail'),
-    
+
     path("votes/", VoteListCreateView.as_view(), name="Votes")
 ]

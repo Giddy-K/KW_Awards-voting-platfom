@@ -2,7 +2,9 @@
 Handels the object-to-json and viseversa converts
 """
 from rest_framework import serializers
-from ..models.vote import Votes, Nominees
+
+from ..models.vote import Votes
+
 
 class VotesSerializer(serializers.ModelSerializer):
     """

@@ -1,8 +1,10 @@
 """
 Defines the Nominees table and its relationship
 """
-from django.db import models
 import uuid
+
+from django.db import models
+
 from .awards import Awards
 
 
