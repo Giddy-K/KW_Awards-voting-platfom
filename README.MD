@@ -1,205 +1,127 @@
-# README.md file for for voting platform project  
-# Django Project Setup
+# KW Awards Voting Platform: Backend
 
-This is a Django project using PostgreSQL as the database.
+Django REST API for the KW Awards voting platform, backed by PostgreSQL.
+The React frontend lives in a separate repository
+(`KW_Awards-voting-platfom_frontend`).
+
+> **Status:** early development. The API is not yet safe to expose publicly
+> (no authorization on most endpoints, no vote-integrity rules). See
+> `AUDIT.md` for the current findings and the roadmap.
 
 ## Requirements
 
-- Python 3.x
-- Django 3.x
-- PostgreSQL
+| Tool | Version |
+|---|---|
+| Python | 3.12 |
+| Django | 5.2 LTS |
+| Django REST framework | 3.18 |
+| PostgreSQL | 16 |
 
-## Installation
+Dependencies are exact-pinned in `backend/voting_platform/requirements/`:
 
-1. **Clone the repository:**
+- `base.txt`: runtime dependencies
+- `prod.txt`: base + gunicorn + WhiteNoise (what `requirements.txt` points at)
+- `dev.txt`: base + pytest, pytest-django, ruff, pip-audit
 
-    ```bash
-    git clone https://github.com/Bobybuu/KW_Awards-voting-platfom.git
-    cd KW_Awards-voting-platfom/backend
-    ```
+## Local setup
 
-2. **Create a virtual environment:**
+All commands run from `backend/voting_platform/`.
 
-    ```bash
-    python --version 
-    python3 -m venv venv
-    source venv/bin/activate  # On Windows use `venv\Scripts\activate`
-    ```
-
-3. **Install dependencies:**
-
-    ```bash
-    pip install -r requirements.txt
-    ```
-
-4. **Set up PostgreSQL:**
-
-### Install PostgreSQL
-
-#### On Windows
-
-- Download the installer from the PostgreSQL Downloads page.
-- Run the installer and follow the setup wizard.
-- Set a password for the PostgreSQL superuser (default user is `postgres`).
-- Choose the port number (default is 5432).
-
-#### On macOS
-
-1. Install Homebrew
-2. Update Homebrew:
-
-    ```bash
-    brew update
-    ```
-
-3. Install PostgreSQL:
-
-    ```bash
-    brew install postgresql
-    ```
-
-4. Start PostgreSQL:
-
-    ```bash
-    brew services start postgresql
-    ```
-
-#### On Linux
-
-1. Update the package list:
-
-    ```bash
-    sudo apt update
-    ```
-
-2. Install PostgreSQL and its contrib package:
-
-    ```bash
-    sudo apt install postgresql postgresql-contrib
-    ```
-
-3. Start PostgreSQL:
-
-    ```bash
-    sudo systemctl start postgresql
-    ```
-
-4. Enable PostgreSQL to start on boot:
-
-    ```bash
-    sudo systemctl enable postgresql
-    ```
-
-### Create a Database and a User for the Project
-
-1. Switch to the PostgreSQL user:
-
-    ```bash
-    sudo -i -u postgres
-    ```
-
-2. Access the PostgreSQL prompt:
-
-    ```bash
-    psql
-    ```
-
-3. Create a database and a user for the project:
-
-    ```sql
-    CREATE DATABASE yourdbname; -- Create the database
-    CREATE USER yourdbuser WITH PASSWORD 'yourpassword'; -- Create the user
-    ALTER ROLE yourdbuser SET client_encoding TO 'utf8'; -- Set the encoding
-    ALTER ROLE yourdbuser SET default_transaction_isolation TO 'read committed'; -- Set the transaction isolation level
-    ALTER ROLE yourdbuser SET timezone TO 'UTC'; -- Set the timezone
-    GRANT ALL PRIVILEGES ON DATABASE yourdbname TO yourdbuser; -- Grant privileges to the user on the database
-    \l -- List all your databases
-    \c yourdbname -- Connect to your database
-    CREATE EXTENSION IF NOT EXISTS "uuid-ossp"; -- Create the uuid-ossp extension
-    \du -- List all your users and their privileges
-    ```
-
-4. Exit the PostgreSQL prompt:
-
-    ```sql
-    \q
-    ```
-
-5. **Configure the database in :**
-
-    Edit your  file to include the following:
-
-    ```python
-    DATABASES = {
-        'default': {
-            'ENGINE': 'django.db.backends.postgresql',
-            'NAME': os.getenv('DB_NAME'),
-            'USER': os.getenv('DB_USER'),
-            'PASSWORD': os.getenv('DB_PASSWORD'),
-            'HOST': os.getenv('DB_HOST'),
-            'PORT': os.getenv('DB_PORT'),
-        }
-    }
-    ```
-
-6. **Apply migrations:**
-
-    ```bash
-    python manage.py migrate
-    ```
-
-7. **Create a superuser:**
-
-    ```bash
-    python manage.py createsuperuser
-    ```
-
-8. **Run the development server:**
-
-    ```bash
-    python manage.py runserver
-    ```
-
-## Usage
-
-- Access the admin site at `http://127.0.0.1:8000/admin/`
-
-## Working with Git Branches
-
-1. **Create a new branch:**
-
-    ```bash
-    git checkout -b your-branch-name
-    ```
-
-    ```bash
-    git branch --set-upstream-to=origin/main <branch-name>  # If tracking main
-    ```
-
-2. **update from main after branch checkout**
+1. **Clone and enter the project**
 
    ```bash
-   git pull origin main
-
+   git clone https://github.com/Giddy-K/KW_Awards-voting-platfom.git
+   cd KW_Awards-voting-platfom/backend/voting_platform
    ```
 
-3. **Make your changes and commit them:**
+2. **Create a virtual environment and install dev dependencies**
 
-    ```bash
-    git add .
-    git commit -m "Your commit message"
-    ```
+   ```bash
+   python -m venv .venv
+   source .venv/bin/activate        # Windows: .venv\Scripts\activate
+   pip install -r requirements/dev.txt
+   ```
 
-4. **Push your branch to the remote repository:**
+3. **Start PostgreSQL 16 and create a database**
 
-    ```bash
-    git push origin your-branch-name
-    ```
+   Use any local Postgres 16, or Docker:
 
-5. **Create a pull request:**
+   ```bash
+   docker run -d --name kw-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=vote_app \
+     -p 5432:5432 postgres:16
+   ```
 
-    Go to the repository on GitHub and create a pull request from your branch.
+   Or, with an existing server, `createdb vote_app`.
 
-6. **Merge the pull request:**
+4. **Configure the environment**
 
-    Once your pull request is reviewed and approved, it can be merged into the main branch.
+   ```bash
+   cp .env.example .env
+   ```
+
+   `manage.py` uses `voting_platform.settings.dev`, which has safe local
+   defaults (database `vote_app` as user `postgres` on `localhost`, emails
+   printed to the console, CORS for `localhost:3000/4500/5173`). Set
+   `DB_PASSWORD` (and any other values that differ) in `.env`.
+
+5. **Migrate, create an admin user, run**
+
+   ```bash
+   python manage.py migrate
+   python manage.py createsuperuser
+   python manage.py runserver
+   ```
+
+   - API: <http://127.0.0.1:8000/api/>
+   - Django admin: <http://127.0.0.1:8000/admin/>
+   - Swagger UI: <http://127.0.0.1:8000/swagger/>
+
+## Settings and environment variables
+
+| Module | Used by | Notes |
+|---|---|---|
+| `voting_platform.settings.dev` | `manage.py` | local defaults, `DEBUG=True` |
+| `voting_platform.settings.prod` | `wsgi.py`, `asgi.py` | no insecure defaults; HTTPS/HSTS, secure cookies, WhiteNoise, stdout logging |
+| `voting_platform.settings.test` | pytest | dev settings + fast hasher + in-memory email |
+
+Override with `DJANGO_SETTINGS_MODULE`. Real environment variables take
+precedence over `.env`. **Every variable is documented in
+[`.env.example`](backend/voting_platform/.env.example).** Required in
+production (no defaults): `SECRET_KEY`, `ALLOWED_HOSTS`, `FRONTEND_URL`, and
+either `DATABASE_URL` or `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`.
+Also set `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` and the `EMAIL_*`
+values for real deployments.
+
+The production settings assume a TLS-terminating reverse proxy that sends
+`X-Forwarded-Proto: https`. Collect static files with
+`python manage.py collectstatic --noinput`.
+
+## Tests, linting and checks
+
+```bash
+pytest                                   # smoke tests (needs Postgres, see above)
+ruff check .                             # lint
+ruff format --check .                    # formatting (use `ruff format .` to fix)
+python manage.py check
+python manage.py makemigrations --check --dry-run
+pip-audit                                # dependency vulnerabilities
+```
+
+Deployment check (uses dummy values, prod settings):
+
+```bash
+DJANGO_SETTINGS_MODULE=voting_platform.settings.prod \
+SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key as k; print(k())')" \
+ALLOWED_HOSTS=vote.example.com FRONTEND_URL=https://vote.example.com \
+python manage.py check --deploy --fail-level WARNING
+```
+
+The same steps run in GitHub Actions (`.github/workflows/ci.yml`) on every
+push and pull request.
+
+## Working with Git branches
+
+1. Create a branch: `git checkout -b your-branch-name`
+2. Keep it up to date: `git pull --rebase origin main`
+3. Commit small, logical changes: `git add -p && git commit`
+4. Push the branch and open a pull request on GitHub; CI must pass before merging.
