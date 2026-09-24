@@ -4,8 +4,12 @@ from django.urls import path
 from rest_framework.routers import SimpleRouter
 
 from accounts.views import LogoutView, MeView, StaffTokenObtainPairView, StaffTokenRefreshView
+from events.views import AwardViewSet, CategoryViewSet, EventViewSet
 
 router = SimpleRouter()
+router.register("events", EventViewSet, basename="event")
+router.register("categories", CategoryViewSet, basename="category")
+router.register("awards", AwardViewSet, basename="award")
 
 urlpatterns = [
     path("auth/token/", StaffTokenObtainPairView.as_view(), name="auth-token"),
