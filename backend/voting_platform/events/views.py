@@ -2,14 +2,18 @@ from django.db.models import Prefetch, ProtectedError
 from drf_spectacular.utils import extend_schema
 from rest_framework import viewsets
 from rest_framework.decorators import action
+from rest_framework.exceptions import NotFound
+from rest_framework.permissions import AllowAny
 from rest_framework.response import Response
 
 from accounts.permissions import IsEventAdmin, IsEventAdminOrReadOnly
 from common.exceptions import Conflict
+from voting import results as results_service
+from voting.serializers import ResultsSerializer, StatsSerializer
 
 from . import services
 from .filters import AwardFilter, CategoryFilter, EventFilter
-from .models import Award, Category, Event
+from .models import Award, Category, Event, EventStatus
 from .selectors import exclude_drafts, is_event_admin
 from .serializers import (
     AwardSerializer,
@@ -63,6 +67,24 @@ class EventViewSet(_EventScopedViewSet):
         serializer.is_valid(raise_exception=True)
         event = services.change_status(event, serializer.validated_data["status"], request=request)
         return Response(self.get_serializer(event).data)
+
+    @extend_schema(responses=ResultsSerializer, auth=[])
+    @action(detail=True, methods=["get"], permission_classes=[AllowAny])
+    def results(self, request, slug=None):
+        """Ranked results. Public only once the event's results are published (404 before);
+        event admins can read them at any time."""
+        event = self.get_object()
+        if not is_event_admin(request.user) and event.status != EventStatus.RESULTS_PUBLISHED:
+            raise NotFound()
+        payload = results_service.event_results(event, request=request)
+        return Response(ResultsSerializer(payload).data)
+
+    @extend_schema(responses=StatsSerializer)
+    @action(detail=True, methods=["get"], permission_classes=[IsEventAdmin])
+    def stats(self, request, slug=None):
+        """Dashboard numbers: totals, votes over time, per-category counts (event admins)."""
+        event = self.get_object()
+        return Response(StatsSerializer(results_service.event_stats(event)).data)
 
 
 class CategoryViewSet(_EventScopedViewSet):
