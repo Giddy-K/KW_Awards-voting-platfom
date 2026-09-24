@@ -45,8 +45,9 @@ FRONTEND_URL = env("FRONTEND_URL")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
-# Reverse proxies (IPs or CIDRs) allowed to set X-Forwarded-For. Empty means forwarding
-# headers are ignored and the socket peer address is used as the client IP.
+# The reverse-proxy chain in front of the app: IPs or CIDRs, one per hop, outermost first and
+# ending with the proxy that connects to this server. Empty means X-Forwarded-For is ignored
+# and the socket peer address is the client IP. See common/ip.py.
 TRUSTED_PROXIES = env.list("TRUSTED_PROXIES", default=[])
 
 
@@ -66,6 +67,7 @@ INSTALLED_APPS = [
     "drf_spectacular",
     "corsheaders",
     # Project apps
+    "common",
     "accounts",
     "events",
     "nominations",
