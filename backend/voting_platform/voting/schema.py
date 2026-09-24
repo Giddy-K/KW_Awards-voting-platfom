@@ -25,7 +25,16 @@ class VoterOrStaffScheme(OpenApiAuthenticationExtension):
     """Either a voter token or a staff JWT (each endpoint's permissions decide which)."""
 
     target_class = "voting.authentication.VoterOrStaffAuthentication"
-    name = "voterAuth"
+    name = "voterOrStaffAuth"
 
     def get_security_definition(self, auto_schema):
-        return _VOTER_SCHEME
+        return {
+            "type": "http",
+            "scheme": "bearer",
+            "bearerFormat": "JWT",
+            "description": (
+                "`POST /votes/` and `GET /votes/mine/` need a **voter token** "
+                "(from `/voters/otp/verify/`); listing, reading and voiding votes need a "
+                "**staff JWT** with the EventAdmin role."
+            ),
+        }

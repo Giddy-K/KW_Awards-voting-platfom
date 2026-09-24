@@ -153,6 +153,8 @@ class AwardNominationsView(generics.ListAPIView):
     search_fields = ["nominee__name", "nominee__stage_name"]
 
     def get_queryset(self):
+        if getattr(self, "swagger_fake_view", False):  # schema generation has no URL kwargs
+            return Nomination.objects.none()
         award = generics.get_object_or_404(
             Award.objects.filter(is_active=True).exclude(category__event__status=EventStatus.DRAFT),
             pk=self.kwargs["award_id"],

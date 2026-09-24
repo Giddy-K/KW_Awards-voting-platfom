@@ -12,6 +12,8 @@ class AccountsConfig(AppConfig):
     name = "accounts"
 
     def ready(self):
+        from . import schema  # noqa: F401  (registers the OpenAPI auth extension)
+
         # Create the Moderator / EventAdmin groups and their Django permissions after
         # every migrate (idempotent). Connected once, for this app's signal only.
         post_migrate.connect(_ensure_roles, sender=self, dispatch_uid="accounts.ensure_roles")

@@ -127,6 +127,8 @@ class VoteViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
         queryset = Vote.objects.select_related(
             "event", "award", "nomination__nominee", "voter", "voided_by"
         )
+        if getattr(self, "swagger_fake_view", False):  # schema generation has no real user
+            return queryset.none()
         if self.action == "mine":
             return queryset.filter(voter=self.request.user.voter)
         return queryset
