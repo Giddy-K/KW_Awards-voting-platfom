@@ -26,17 +26,18 @@ def make_vote(voter, nomination, **kwargs):
 
 
 def make_payment(voter, nomination, votes=5, status=PaymentStatus.SUCCEEDED, **kwargs):
-    if status == PaymentStatus.SUCCEEDED:
-        kwargs.setdefault("provider_receipt", f"RCPT{Payment.objects.count() + 1:06d}")
-    return Payment.objects.create(
-        voter=voter,
-        nomination=nomination,
-        phone_e164=voter.phone_e164,
-        amount=Decimal("50.00"),
-        votes_purchased=votes,
-        status=status,
-        **kwargs,
-    )
+    params = {
+        "voter": voter,
+        "nomination": nomination,
+        "phone_e164": voter.phone_e164,
+        "amount": Decimal("50.00"),
+        "votes_purchased": votes,
+        "status": status,
+    }
+    params.update(kwargs)
+    if params["status"] == PaymentStatus.SUCCEEDED and "provider_receipt" not in params:
+        params["provider_receipt"] = f"RCPT{Payment.objects.count() + 1:06d}"
+    return Payment.objects.create(**params)
 
 
 def make_paid_vote(voter, nomination, quantity=5):
