@@ -41,7 +41,11 @@ def log(
         if user_agent is None:
             user_agent = request.META.get("HTTP_USER_AGENT", "")
         principal = getattr(request, "user", None)
-        if actor_user is None and actor_voter is None and getattr(principal, "is_authenticated", False):
+        if (
+            actor_user is None
+            and actor_voter is None
+            and getattr(principal, "is_authenticated", False)
+        ):
             if isinstance(principal, User):
                 actor_user = principal
             elif hasattr(principal, "voter"):

@@ -22,7 +22,9 @@ def clean_text(value, *, multiline=False):
     text = _CONTROL_CHARS.sub("", text)
     text = strip_tags(text)
     if multiline:
-        lines = [_INLINE_WS.sub(" ", line).strip() for line in text.replace("\r\n", "\n").split("\n")]
+        lines = [
+            _INLINE_WS.sub(" ", line).strip() for line in text.replace("\r\n", "\n").split("\n")
+        ]
         text = re.sub(r"\n{3,}", "\n\n", "\n".join(lines))
     else:
         text = _INLINE_WS.sub(" ", text.replace("\n", " ").replace("\r", " "))

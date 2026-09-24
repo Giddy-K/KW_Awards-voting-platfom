@@ -49,7 +49,9 @@ _sms = SMS_BACKEND
 if _sms == "auto":
     _sms = "africastalking" if (AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY) else "console"
 if _sms in ("console", "locmem"):
-    _problems.append("SMS backend is dev-only; set AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY")
+    _problems.append(
+        "SMS backend is dev-only; set AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY"
+    )
 if _sms == "africastalking" and not (AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY):
     _problems.append("AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY are required")
 _captcha = CAPTCHA_BACKEND

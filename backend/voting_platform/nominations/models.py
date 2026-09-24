@@ -100,7 +100,9 @@ class Nomination(BaseModel):
     class Meta:
         ordering = ["-created_at"]
         constraints = [
-            models.UniqueConstraint(fields=["nominee", "award"], name="nomination_nominee_award_unique"),
+            models.UniqueConstraint(
+                fields=["nominee", "award"], name="nomination_nominee_award_unique"
+            ),
             models.CheckConstraint(
                 name="nomination_rejected_has_reason",
                 condition=~Q(status="rejected") | ~Q(rejection_reason=""),

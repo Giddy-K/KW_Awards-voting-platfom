@@ -26,8 +26,11 @@ def make_user(role=None, *, superuser=False, email=None, is_active=True, is_staf
     if superuser:
         return User.objects.create_superuser(email=email, password=PASSWORD, full_name="Super User")
     user = User.objects.create_user(
-        email=email, password=PASSWORD, full_name=f"Test {role or 'User'}",
-        is_active=is_active, is_staff=is_staff,
+        email=email,
+        password=PASSWORD,
+        full_name=f"Test {role or 'User'}",
+        is_active=is_active,
+        is_staff=is_staff,
     )
     if role:
         from django.contrib.auth.models import Group
@@ -81,7 +84,9 @@ def make_category(event=None, **kwargs):
     event = event or make_event()
     n = next(_counter)
     return Category.objects.create(
-        event=event, name=kwargs.pop("name", f"Category {n}"), slug=kwargs.pop("slug", f"cat-{n}"),
+        event=event,
+        name=kwargs.pop("name", f"Category {n}"),
+        slug=kwargs.pop("slug", f"cat-{n}"),
         **kwargs,
     )
 
@@ -90,7 +95,9 @@ def make_award(category=None, **kwargs):
     category = category or make_category()
     n = next(_counter)
     return Award.objects.create(
-        category=category, name=kwargs.pop("name", f"Award {n}"), slug=kwargs.pop("slug", f"award-{n}"),
+        category=category,
+        name=kwargs.pop("name", f"Award {n}"),
+        slug=kwargs.pop("slug", f"award-{n}"),
         **kwargs,
     )
 

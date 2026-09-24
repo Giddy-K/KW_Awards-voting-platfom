@@ -81,4 +81,6 @@ class Payment(BaseModel):
         return mask_phone(self.phone_e164)
 
     def __str__(self):
-        return f"Payment {self.pk} {self.masked_phone} {self.amount} {self.currency} [{self.status}]"
+        return (
+            f"Payment {self.pk} {self.masked_phone} {self.amount} {self.currency} [{self.status}]"
+        )

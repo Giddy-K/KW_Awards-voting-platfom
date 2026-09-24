@@ -75,7 +75,9 @@ class AuditLog(BaseModel):
         ]
 
     def __str__(self):
-        return f"{self.created_at:%Y-%m-%d %H:%M:%S} {self.action} {self.target_type}:{self.target_id}"
+        return (
+            f"{self.created_at:%Y-%m-%d %H:%M:%S} {self.action} {self.target_type}:{self.target_id}"
+        )
 
     def save(self, *args, **kwargs):
         if not self._state.adding:

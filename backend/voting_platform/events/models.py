@@ -100,7 +100,9 @@ class Category(BaseModel):
     event = models.ForeignKey(Event, on_delete=models.CASCADE, related_name="categories")
     name = models.CharField(max_length=120)
     slug = models.SlugField(max_length=80)
-    description = models.TextField(blank=True, max_length=1000, validators=[MaxLengthValidator(1000)])
+    description = models.TextField(
+        blank=True, max_length=1000, validators=[MaxLengthValidator(1000)]
+    )
     display_order = models.PositiveSmallIntegerField(default=0)
 
     class Meta:
@@ -118,7 +120,9 @@ class Award(BaseModel):
     category = models.ForeignKey(Category, on_delete=models.CASCADE, related_name="awards")
     name = models.CharField(max_length=150)
     slug = models.SlugField(max_length=80)
-    description = models.TextField(blank=True, max_length=1000, validators=[MaxLengthValidator(1000)])
+    description = models.TextField(
+        blank=True, max_length=1000, validators=[MaxLengthValidator(1000)]
+    )
     display_order = models.PositiveSmallIntegerField(default=0)
     is_active = models.BooleanField(default=True)
 

@@ -28,7 +28,12 @@ def login(api, email, password=PASSWORD):
 def test_f05_no_public_user_endpoints(api):
     """The old /users/ viewset exposed password hashes and let anyone escalate privileges."""
     user = make_user()
-    for path in ("/api/v1/users/", f"/api/v1/users/{user.pk}/", "/api/v1/auth/signup/", "/api/users/"):
+    for path in (
+        "/api/v1/users/",
+        f"/api/v1/users/{user.pk}/",
+        "/api/v1/auth/signup/",
+        "/api/users/",
+    ):
         assert api.get(path).status_code == 404, path
         assert api.post(path, {"email": "x@example.com", "password": "x"}).status_code == 404, path
 
