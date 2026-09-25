@@ -52,9 +52,9 @@ if CACHE_URL.startswith("locmem") or not CACHE_URL:
 _sms = SMS_BACKEND
 if _sms == "auto":
     _sms = "africastalking" if (AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY) else "console"
-if _sms in ("console", "locmem"):
+if _sms in ("console", "locmem", "e2e"):
     _problems.append(
-        "SMS backend is dev-only; set AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY"
+        "SMS backend is dev/e2e-only; set AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY"
     )
 if _sms == "africastalking" and not (AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY):
     _problems.append("AFRICASTALKING_USERNAME and AFRICASTALKING_API_KEY are required")

@@ -35,3 +35,15 @@ os.environ.setdefault("DB_PASSWORD", "")
 
 # Must come after the defaults above.
 from .base import *  # noqa: E402,F403
+from .base import SMS_BACKEND  # noqa: E402
+
+# settings.e2e (SMS_BACKEND="e2e") is for driving a real server from an external end-to-end
+# test runner; it must never be reachable by asking dev.py for it directly (e.g. a stray
+# SMS_BACKEND=e2e environment variable left over from an e2e run). Only fires when dev.py is
+# the actual settings module in use, not when settings.e2e imports from it.
+if os.environ.get("DJANGO_SETTINGS_MODULE", "").endswith(".dev") and SMS_BACKEND == "e2e":
+    from django.core.exceptions import ImproperlyConfigured
+
+    raise ImproperlyConfigured(
+        "SMS_BACKEND=e2e is only valid under voting_platform.settings.e2e, not .dev."
+    )

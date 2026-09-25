@@ -33,12 +33,26 @@ class ConsoleSmsBackend(SmsBackend):
 
 
 class LocMemSmsBackend(SmsBackend):
-    """Collects messages in ``LocMemSmsBackend.outbox`` (tests)."""
+    """Collects messages in ``LocMemSmsBackend.outbox`` (tests, same process only)."""
 
     outbox = []
 
     def send(self, to_e164, body):
         self.outbox.append({"to": to_e164, "body": body})
+
+
+class E2EDatabaseSmsBackend(SmsBackend):
+    """Persists sent messages to the database (``common.models.E2ESentMessage``).
+
+    For ``settings.e2e`` only. An end-to-end test drives a real, separately running server
+    process; a same-process outbox like ``LocMemSmsBackend`` can't bridge that, so the
+    ``last_otp`` management command reads this table from its own process instead.
+    """
+
+    def send(self, to_e164, body):
+        from common.models import E2ESentMessage
+
+        E2ESentMessage.objects.create(phone_e164=to_e164, body=body)
 
 
 class AfricasTalkingSmsBackend(SmsBackend):
@@ -70,9 +84,11 @@ class AfricasTalkingSmsBackend(SmsBackend):
 
 
 def get_sms_backend():
-    """Resolve ``settings.SMS_BACKEND``: ``auto`` | ``console`` | ``locmem`` | ``africastalking`` | dotted path.
+    """Resolve ``settings.SMS_BACKEND``.
 
+    ``auto`` | ``console`` | ``locmem`` | ``e2e`` | ``africastalking`` | dotted path.
     ``auto`` uses Africa's Talking only when its credentials are set in the environment.
+    ``e2e`` is set only by ``settings.e2e``; dev and prod both refuse it at startup.
     """
     name = getattr(settings, "SMS_BACKEND", "auto")
     if name == "auto":
@@ -82,6 +98,8 @@ def get_sms_backend():
         return ConsoleSmsBackend()
     if name == "locmem":
         return LocMemSmsBackend()
+    if name == "e2e":
+        return E2EDatabaseSmsBackend()
     if name == "africastalking":
         return AfricasTalkingSmsBackend()
     return import_string(name)()
