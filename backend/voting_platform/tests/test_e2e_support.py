@@ -98,6 +98,7 @@ def test_last_otp_errors_when_the_latest_message_has_no_code():
 
 PROD_ENV = {
     "SECRET_KEY": "x7Qm-4vB!pZ2rLk9#tWc8Yn3Ds6HgJf0aEu1oIiXyVbN5MqTz_R-long-enough-key",
+    "AUDIT_PHONE_HASH_KEY": "j2Nb-9wA!qX4sMp7#uVe1Zr6Ct8FgKh3dRy5oLiWbQ0MnTz_S-a-different-key",
     "ALLOWED_HOSTS": "vote.example.com",
     "FRONTEND_URL": "https://vote.example.com",
     "CORS_ALLOWED_ORIGINS": "https://vote.example.com",

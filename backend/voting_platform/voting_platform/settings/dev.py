@@ -17,6 +17,7 @@ environ.Env.read_env(Path(__file__).resolve().parent.parent.parent / ".env")
 
 _DEV_DEFAULTS = {
     "SECRET_KEY": "django-insecure-dev-only-do-not-use-in-production",
+    "AUDIT_PHONE_HASH_KEY": "dev-only-audit-phone-hash-key-do-not-use-in-production",
     "DEBUG": "True",
     "ALLOWED_HOSTS": "localhost,127.0.0.1,[::1],testserver",
     "FRONTEND_URL": "http://localhost:4500",

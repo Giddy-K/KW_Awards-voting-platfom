@@ -53,18 +53,19 @@ def request_otp(phone_e164, *, request):
     """Create and SMS a fresh code. Always succeeds from the caller's point of view."""
     voter, _created = Voter.objects.get_or_create(phone_e164=phone_e164)
     if voter.is_blocked:
-        audit.log(
+        audit.log_voter_event(
             AuditAction.OTP_REQUESTED,
+            voter=voter,
+            phone_e164=phone_e164,
             request=request,
-            actor_voter=voter,
-            metadata={"phone_masked": mask_phone(phone_e164), "sent": False, "blocked": True},
+            metadata={"sent": False, "blocked": True},
         )
         return
     # Phase 2.2: enforce the global daily SMS budget before doing any work that assumes the
-    # code will actually be sent (raises SmsBudgetExhausted; OTPRequestView turns that into a
-    # 503). Checked here, not at the view, so a blocked voter's silent no-SMS request above
-    # never consumes budget it doesn't use.
-    reserve_sms_budget(phone_masked=mask_phone(phone_e164), request=request)
+    # code will actually be sent (raises SmsBudgetExhausted; the global exception handler turns
+    # that into a 503, Phase 2.3). Checked here, not at the view, so a blocked voter's silent
+    # no-SMS request above never consumes budget it doesn't use.
+    reserve_sms_budget(voter=voter, phone_e164=phone_e164, request=request)
     now = timezone.now()
     code = generate_code()
     with transaction.atomic():
@@ -81,12 +82,13 @@ def request_otp(phone_e164, *, request):
         )
         challenge.code_hash = hash_code(challenge.id, code)
         challenge.save()
-        audit.log(
+        audit.log_voter_event(
             AuditAction.OTP_REQUESTED,
+            voter=voter,
+            phone_e164=phone_e164,
             request=request,
-            actor_voter=voter,
             target=challenge,
-            metadata={"phone_masked": mask_phone(phone_e164), "sent": True},
+            metadata={"sent": True},
         )
     minutes = settings.OTP_TTL_SECONDS // 60
     try:
@@ -148,15 +150,12 @@ def verify_otp(phone_e164, code, *, request):
                 else:
                     reason = "invalid_code"
         if not succeeded:
-            audit.log(
+            audit.log_voter_event(
                 AuditAction.OTP_FAILED,
+                voter=voter,
+                phone_e164=phone_e164,
                 request=request,
-                actor_voter=voter,
-                metadata={
-                    "phone_masked": mask_phone(phone_e164),
-                    "reason": reason,
-                    "attempts": attempts,
-                },
+                metadata={"reason": reason, "attempts": attempts},
             )
     # Raise only after the transaction committed, so the attempt counter and audit entry persist.
     if not succeeded:

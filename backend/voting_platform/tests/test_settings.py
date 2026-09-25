@@ -15,6 +15,7 @@ PROJECT_DIR = Path(__file__).resolve().parent.parent
 PROD_ENV = {
     "DJANGO_SETTINGS_MODULE": "voting_platform.settings.prod",
     "SECRET_KEY": "x7Qm-4vB!pZ2rLk9#tWc8Yn3Ds6HgJf0aEu1oIiXyVbN5MqTz_R-long-enough-key-value",
+    "AUDIT_PHONE_HASH_KEY": "j2Nb-9wA!qX4sMp7#uVe1Zr6Ct8FgKh3dRy5oLiWbQ0MnTz_S-a-different-key",
     "ALLOWED_HOSTS": "vote.example.com",
     "FRONTEND_URL": "https://vote.example.com",
     "CORS_ALLOWED_ORIGINS": "https://vote.example.com",
@@ -153,6 +154,8 @@ def test_check_deploy_has_zero_warnings_and_hsts_preload_is_opt_in():
     "override,message",
     [
         ({"SECRET_KEY": None}, "SECRET_KEY"),
+        ({"AUDIT_PHONE_HASH_KEY": None}, "AUDIT_PHONE_HASH_KEY"),
+        ({"AUDIT_PHONE_HASH_KEY": PROD_ENV["SECRET_KEY"]}, "AUDIT_PHONE_HASH_KEY"),
         ({"ALLOWED_HOSTS": None}, "ALLOWED_HOSTS"),
         ({"ALLOWED_HOSTS": ""}, "Empty required production setting"),
         ({"FRONTEND_URL": None}, "FRONTEND_URL"),

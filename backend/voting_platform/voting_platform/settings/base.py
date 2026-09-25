@@ -33,6 +33,12 @@ if (BASE_DIR / ".env").exists():
 #   python -c "from django.core.management.utils import get_random_secret_key as k; print(k())"
 SECRET_KEY = env("SECRET_KEY")
 
+# Phase 2.3: keys the HMAC used to correlate audit-log entries for a phone number that hasn't
+# verified yet (audit.services.hash_phone), without ever storing the raw number in the log.
+# Deliberately a separate setting from SECRET_KEY -- required and checked distinct from it in
+# prod (settings.prod) -- so a leak of one key doesn't compromise the other.
+AUDIT_PHONE_HASH_KEY = env("AUDIT_PHONE_HASH_KEY", default="")
+
 DEBUG = env.bool("DEBUG", default=False)
 
 # Comma-separated, e.g. "vote.example.com,api.example.com". Required.

@@ -4,6 +4,7 @@ from datetime import timedelta
 
 import pytest
 import time_machine
+from django.core.management import call_command
 from django.db import DatabaseError, connection, transaction
 from django.db.models import ProtectedError
 from django.test import RequestFactory
@@ -13,6 +14,7 @@ from rest_framework.test import APIClient
 from audit import services as audit
 from audit.models import AppendOnlyError, AuditAction, AuditLog
 from voting.authentication import VoterPrincipal
+from voting.models import Voter
 
 from .helpers import (
     make_event_admin,
@@ -22,6 +24,7 @@ from .helpers import (
     staff_client,
     voter_client,
 )
+from .test_otp import code_from, request_code, verify
 
 pytestmark = pytest.mark.django_db
 
@@ -192,3 +195,79 @@ def test_audit_log_is_paginated():
     admin = staff_client(make_event_admin())
     first = admin.get(URL).data
     assert first["count"] >= 27 and len(first["results"]) == 25 and first["next"]
+
+
+# --- Phase 2.3: pre-verification entries don't reference Voter ---------------------------
+# OTP_REQUESTED / OTP_FAILED / SMS_BUDGET_EXHAUSTED entries for a not-yet-verified voter leave
+# actor_voter null and carry a masked phone + a keyed hash instead (audit.services.hash_phone),
+# so an unverified voter with only this kind of activity is no longer PROTECTed from
+# purge_unverified_voters -- previously the single most common case (anyone who requested an
+# OTP and never verified) could never actually be purged, since AuditLog.actor_voter is PROTECT.
+
+
+def test_hash_phone_differs_from_the_raw_number_and_depends_on_the_key(settings):
+    digest = audit.hash_phone("+254712345678")
+    assert digest != "+254712345678"
+    assert len(digest) == 64  # hex sha256
+    assert audit.hash_phone("+254712345678") == digest  # deterministic for the same key
+
+    settings.AUDIT_PHONE_HASH_KEY = "a-different-key"
+    assert audit.hash_phone("+254712345678") != digest
+
+
+def test_otp_requested_and_failed_do_not_reference_an_unverified_voter(api, sms_outbox):
+    request_code(api, "0712345678")
+    verify(api, "000000")  # wrong code; the voter is still unverified
+    entries = AuditLog.objects.filter(action__in=[AuditAction.OTP_REQUESTED, AuditAction.OTP_FAILED])
+    assert entries.exists()
+    for row in entries:
+        assert row.actor_voter is None
+        assert row.metadata["phone_masked"] == "+2547******78"
+        assert row.metadata["phone_hash"] == audit.hash_phone("+254712345678")
+
+
+def test_an_unverified_voter_with_otp_activity_is_purgeable(api, sms_outbox):
+    request_code(api, "0712345678")
+    voter = Voter.objects.get(phone_e164="+254712345678")
+    assert AuditLog.objects.filter(actor_voter=voter).count() == 0  # nothing references it
+    Voter.objects.filter(pk=voter.pk).update(created_at=timezone.now() - timedelta(hours=72))
+
+    call_command("purge_unverified_voters", "--execute")
+    assert not Voter.objects.filter(pk=voter.pk).exists()
+    # The audit trail itself is untouched (append-only); it simply never referenced the voter.
+    assert AuditLog.objects.filter(action=AuditAction.OTP_REQUESTED).exists()
+
+
+def test_later_entries_use_actor_voter_once_the_voter_has_verified(api, sms_outbox):
+    request_code(api, "0712345678")
+    verify(api, code_from(sms_outbox))  # verifies the voter
+    request_code(api, "0712345678")  # a later request, now that the voter is verified
+
+    voter = Voter.objects.get(phone_e164="+254712345678")
+    assert voter.verified_at is not None
+    later = AuditLog.objects.filter(action=AuditAction.OTP_REQUESTED).order_by("-seq").first()
+    assert later.actor_voter_id == voter.id
+    assert "phone_hash" not in later.metadata
+
+
+def test_phone_filter_finds_pre_and_post_verification_entries_for_the_same_number(
+    api, sms_outbox
+):
+    request_code(api, "0712345678")  # pre-verification: actor_voter null, phone_hash set
+    verify(api, code_from(sms_outbox))  # verifies; OTP_VERIFIED references actor_voter
+    request_code(api, "0712345678")  # post-verification: actor_voter set, no phone_hash
+
+    admin = staff_client(make_event_admin())
+    response = admin.get(URL + "?phone=0712345678")
+    assert response.status_code == 200
+    actions = {r["action"] for r in response.data["results"]}
+    assert {"otp.requested", "otp.verified"} <= actions
+    assert response.data["count"] >= 3
+    # Staff never see the raw hash, even though it's in the underlying row's metadata.
+    assert all("phone_hash" not in r["metadata"] for r in response.data["results"])
+
+
+def test_phone_filter_rejects_an_invalid_phone():
+    admin = staff_client(make_event_admin())
+    response = admin.get(URL + "?phone=not-a-phone")
+    assert response.status_code == 400

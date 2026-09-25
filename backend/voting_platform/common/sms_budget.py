@@ -46,11 +46,14 @@ def _seconds_until_next_nairobi_day(now):
     return max(1, math.ceil((tomorrow_midnight - now).total_seconds()))
 
 
-def reserve(*, phone_masked, request=None):
+def reserve(*, voter, phone_e164, request=None):
     """Count one SMS against today's budget; raise :class:`SmsBudgetExhausted` if that was the
     one that broke the limit. Also logs a one-time WARNING on the request that crosses 80%.
 
-    A ``SMS_DAILY_LIMIT`` of ``0`` (or unset) disables the budget entirely.
+    A ``SMS_DAILY_LIMIT`` of ``0`` (or unset) disables the budget entirely. ``voter`` and
+    ``phone_e164`` are passed through to :func:`audit.services.log_voter_event` (Phase 2.3) so
+    the SMS_BUDGET_EXHAUSTED entry follows the same pre-/post-verification rule as OTP_REQUESTED
+    and OTP_FAILED: no ``actor_voter`` reference until the voter has actually verified.
     """
     limit = settings.SMS_DAILY_LIMIT
     if not limit:
@@ -67,10 +70,12 @@ def reserve(*, phone_masked, request=None):
 
     if count > limit:
         logger.error("SMS daily budget exhausted: %s/%s sent today", count, limit)
-        audit.log(
+        audit.log_voter_event(
             AuditAction.SMS_BUDGET_EXHAUSTED,
+            voter=voter,
+            phone_e164=phone_e164,
             request=request,
-            metadata={"phone_masked": phone_masked, "count": count, "limit": limit},
+            metadata={"count": count, "limit": limit},
         )
         raise SmsBudgetExhausted(retry_after=ttl)
 

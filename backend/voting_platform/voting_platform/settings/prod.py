@@ -14,12 +14,14 @@ from .base import (
     AFRICASTALKING_API_KEY,
     AFRICASTALKING_USERNAME,
     ALLOWED_HOSTS,
+    AUDIT_PHONE_HASH_KEY,
     CACHE_URL,
     CAPTCHA_BACKEND,
     CORS_ALLOWED_ORIGINS,
     DATABASES,
     FRONTEND_URL,
     MIDDLEWARE,
+    SECRET_KEY,
     SMS_BACKEND,
     TURNSTILE_SECRET_KEY,
     env,
@@ -37,10 +39,13 @@ _required = {
     # CORS_ALLOW_CREDENTIALS is always True (base.py), so the staff refresh cookie is only
     # ever sent to origins named here; an empty list would silently allow no frontend at all.
     "CORS_ALLOWED_ORIGINS": CORS_ALLOWED_ORIGINS,
+    "AUDIT_PHONE_HASH_KEY": AUDIT_PHONE_HASH_KEY,
 }
 _missing = [name for name, value in _required.items() if not value]
 if _missing:
     raise ImproperlyConfigured("Empty required production setting(s): " + ", ".join(_missing))
+if AUDIT_PHONE_HASH_KEY == SECRET_KEY:
+    raise ImproperlyConfigured("AUDIT_PHONE_HASH_KEY must be different from SECRET_KEY.")
 
 # --- Refuse insecure backends in production --------------------------------
 # The dev-only fallbacks (console SMS prints OTP codes; the dummy CAPTCHA always passes;
