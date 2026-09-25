@@ -19,7 +19,7 @@ python-ipware==3.0.0
 pytz==2025.1
 PyYAML==6.0.2
 requests==2.32.3
-sqlparse==0.5.3
+sqlparse==0.6.0
 typing_extensions==4.12.2
 uritemplate==4.1.1
 urllib3==2.3.0
