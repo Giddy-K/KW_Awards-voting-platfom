@@ -29,5 +29,16 @@ services:
     # Add "forwardPorts": ["5432"] to **devcontainer.json** to forward PostgreSQL locally.
     # (Adding the "ports" property to this file will not forward from a Codespace.)
 
+  # The shared cache the throttles need (see AUDIT.md "Phase 2.1 results" for why a live
+  # Redis run wasn't possible in the audit's own Windows dev environment). Shares db's
+  # network namespace, like `app` does, so it's reachable at localhost:6379 from `app`.
+  # Set CACHE_URL=redis://localhost:6379/1 to use it (see backend/voting_platform/.env.example).
+  redis:
+    image: redis:7-alpine
+    restart: unless-stopped
+    network_mode: service:db
+
+    # Add "forwardPorts": ["6379"] to **devcontainer.json** to forward Redis locally.
+
 volumes:
   postgres-data:
