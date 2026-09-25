@@ -78,6 +78,10 @@ paths:
         description: A page number within the paginated result set.
         schema:
           type: integer
+      - in: query
+        name: phone
+        schema:
+          type: string
       - name: search
         required: false
         in: query
@@ -103,6 +107,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAuditLogList'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/audit-logs/{id}/:
     get:
       operationId: audit_logs_retrieve
@@ -127,6 +149,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/AuditLog'
           description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/auth/logout/:
     post:
       operationId: auth_logout_create
@@ -147,6 +187,18 @@ paths:
       responses:
         '204':
           description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/auth/me/:
     get:
       operationId: auth_me_retrieve
@@ -161,6 +213,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Me'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/auth/refresh/:
     post:
@@ -188,6 +246,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessToken'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/auth/token/:
     post:
@@ -224,6 +306,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/AccessToken'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/awards/:
     get:
@@ -272,6 +378,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedAwardList'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     post:
       operationId: awards_create
       description: Public read (non-draft events only), event-admin write.
@@ -294,6 +406,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Award'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/awards/{award_id}/nominations/:
     get:
@@ -336,6 +466,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedPublicNominationList'
           description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/awards/{id}/:
     get:
       operationId: awards_retrieve
@@ -358,6 +494,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Award'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
     put:
       operationId: awards_update
@@ -390,6 +532,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Award'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     patch:
       operationId: awards_partial_update
       description: Public read (non-draft events only), event-admin write.
@@ -420,6 +586,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Award'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     delete:
       operationId: awards_destroy
       description: Public read (non-draft events only), event-admin write.
@@ -438,6 +628,30 @@ paths:
       responses:
         '204':
           description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/categories/:
     get:
       operationId: categories_list
@@ -476,6 +690,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedCategoryList'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     post:
       operationId: categories_create
       description: Public read (non-draft events only), event-admin write.
@@ -499,6 +719,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/Category'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/categories/{id}/:
     get:
       operationId: categories_retrieve
@@ -521,6 +759,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Category'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
     put:
       operationId: categories_update
@@ -553,6 +797,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Category'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     patch:
       operationId: categories_partial_update
       description: Public read (non-draft events only), event-admin write.
@@ -583,6 +851,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Category'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     delete:
       operationId: categories_destroy
       description: Public read (non-draft events only), event-admin write.
@@ -601,6 +893,30 @@ paths:
       responses:
         '204':
           description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/events/:
     get:
       operationId: events_list
@@ -656,6 +972,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedEventList'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     post:
       operationId: events_create
       description: Events with their categories and awards. Drafts are visible to
@@ -680,6 +1002,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/Event'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/events/{slug}/:
     get:
       operationId: events_retrieve
@@ -701,6 +1041,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Event'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
     put:
       operationId: events_update
@@ -732,6 +1078,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Event'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     patch:
       operationId: events_partial_update
       description: Events with their categories and awards. Drafts are visible to
@@ -761,6 +1131,30 @@ paths:
               schema:
                 $ref: '#/components/schemas/Event'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     delete:
       operationId: events_destroy
       description: Events with their categories and awards. Drafts are visible to
@@ -778,6 +1172,30 @@ paths:
       responses:
         '204':
           description: No response body
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/events/{slug}/results/:
     get:
       operationId: events_results_retrieve
@@ -798,6 +1216,12 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Results'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/events/{slug}/set-status/:
     post:
@@ -829,6 +1253,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/Event'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/events/{slug}/stats/:
     get:
       operationId: events_stats_retrieve
@@ -850,6 +1304,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/Stats'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/nominations/:
     get:
@@ -915,6 +1387,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedPublicNominationList'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     post:
       operationId: nominations_create
       description: Submit a nomination (multipart, CAPTCHA-protected). It stays hidden
@@ -936,6 +1414,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/SubmissionResult'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/nominations/{id}/:
     get:
@@ -962,6 +1458,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/PublicNomination'
           description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/nominations/{id}/approve/:
     post:
       operationId: nominations_approve_create
@@ -984,6 +1486,30 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StaffNomination'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/nominations/{id}/reject/:
     post:
@@ -1017,6 +1543,36 @@ paths:
               schema:
                 $ref: '#/components/schemas/StaffNomination'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/nominees/{id}/:
     get:
       operationId: nominees_retrieve
@@ -1041,6 +1597,12 @@ paths:
               schema:
                 $ref: '#/components/schemas/NomineeProfile'
           description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/voters/otp/request/:
     post:
       operationId: voters_otp_request_create
@@ -1064,6 +1626,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/Detail'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '503':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
   /api/v1/voters/otp/verify/:
     post:
       operationId: voters_otp_verify_create
@@ -1085,6 +1665,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VoterToken'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/votes/:
     get:
@@ -1157,6 +1749,24 @@ paths:
               schema:
                 $ref: '#/components/schemas/PaginatedStaffVoteList'
           description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
     post:
       operationId: votes_create
       description: Cast a free vote for a nomination (one per award; 409 if you already
@@ -1180,6 +1790,42 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/VoteReceipt'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '429':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/votes/{id}/:
     get:
@@ -1208,6 +1854,24 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StaffVote'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/votes/{id}/void/:
     post:
@@ -1240,6 +1904,36 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/StaffVote'
+          description: ''
+        '400':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '404':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '409':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
   /api/v1/votes/mine/:
     get:
@@ -1274,6 +1968,18 @@ paths:
             application/json:
               schema:
                 $ref: '#/components/schemas/PaginatedMyVoteList'
+          description: ''
+        '401':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
+          description: ''
+        '403':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/ErrorResponse'
           description: ''
 components:
   schemas:
@@ -1344,6 +2050,11 @@ components:
           type: string
           readOnly: true
         metadata:
+          type: object
+          additionalProperties: {}
+          description: |-
+            Never expose the raw phone_hash (Phase 2.3): staff search by phone (the ``?phone=``
+            filter above), they never need to see or send the hash itself.
           readOnly: true
         ip_address:
           type: string
@@ -1552,12 +2263,89 @@ components:
       - event
       - name
       - slug
+    CodeEnum:
+      enum:
+      - already_reviewed
+      - already_voided
+      - already_voted
+      - authentication_failed
+      - captcha_failed
+      - conflict
+      - duplicate_nomination
+      - invalid
+      - invalid_otp
+      - invalid_transition
+      - method_not_allowed
+      - no_active_account
+      - nominations_closed
+      - not_authenticated
+      - not_found
+      - parse_error
+      - permission_denied
+      - sms_unavailable
+      - throttled
+      - token_not_valid
+      - unsupported_media_type
+      - unsupported_phone_number
+      - voting_closed
+      - window_required
+      type: string
+      description: |-
+        * `already_reviewed` - already_reviewed
+        * `already_voided` - already_voided
+        * `already_voted` - already_voted
+        * `authentication_failed` - authentication_failed
+        * `captcha_failed` - captcha_failed
+        * `conflict` - conflict
+        * `duplicate_nomination` - duplicate_nomination
+        * `invalid` - invalid
+        * `invalid_otp` - invalid_otp
+        * `invalid_transition` - invalid_transition
+        * `method_not_allowed` - method_not_allowed
+        * `no_active_account` - no_active_account
+        * `nominations_closed` - nominations_closed
+        * `not_authenticated` - not_authenticated
+        * `not_found` - not_found
+        * `parse_error` - parse_error
+        * `permission_denied` - permission_denied
+        * `sms_unavailable` - sms_unavailable
+        * `throttled` - throttled
+        * `token_not_valid` - token_not_valid
+        * `unsupported_media_type` - unsupported_media_type
+        * `unsupported_phone_number` - unsupported_phone_number
+        * `voting_closed` - voting_closed
+        * `window_required` - window_required
     Detail:
       type: object
       properties:
         detail:
           type: string
       required:
+      - detail
+    ErrorResponse:
+      type: object
+      description: |-
+        The shape of every non-2xx response body (``common.exceptions.exception_handler``).
+
+        ``code``'s choices come from :func:`common.exceptions.all_error_codes`, computed lazily in
+        :meth:`get_fields` -- not as a class-level field -- so it reflects every ``ApiError``
+        subclass defined anywhere in the app by the time this is actually used (schema generation
+        or a real request), regardless of which module happens to import this one first.
+      properties:
+        code:
+          $ref: '#/components/schemas/CodeEnum'
+        detail:
+          type: string
+        fields:
+          type: object
+          additionalProperties:
+            type: array
+            items:
+              type: string
+          nullable: true
+          description: Per-field validation errors. Present only for validation failures.
+      required:
+      - code
       - detail
     Event:
       type: object
