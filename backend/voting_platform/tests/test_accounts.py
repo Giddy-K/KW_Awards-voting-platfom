@@ -114,6 +114,23 @@ def test_login_rejects_bad_password_inactive_and_non_staff(api):
     assert login(api, non_staff.email).status_code == 401
 
 
+def test_login_failure_is_identical_for_wrong_password_unknown_email_and_inactive_account(api):
+    """AUDIT F-11 / Phase 2.3: no_active_account must not let an attacker distinguish a wrong
+    password from an unknown email from a deactivated account -- any difference in status,
+    code or message would leak which staff emails exist."""
+    user = make_user()
+    inactive = make_user(is_active=False)
+    responses = [
+        login(api, user.email, "wrong-password"),
+        login(api, "no-such-person@example.com"),
+        login(api, inactive.email),
+    ]
+    bodies = {(r.status_code, r.data["code"], r.data["detail"]) for r in responses}
+    assert len(bodies) == 1, [(r.status_code, r.data) for r in responses]
+    status_code, code, _detail = bodies.pop()
+    assert status_code == 401 and code == "no_active_account"
+
+
 def test_staff_logins_are_audited(api):
     user = make_user()
     login(api, user.email)
