@@ -1,25 +1,36 @@
 """
 Handels the object-to-json and viseversa converts
 """
-from rest_framework import serializers
-from ..models.nominees import Nominees
-from ..models.awards import Awards
+
 import uuid
+
+from rest_framework import serializers
+
+from ..models.awards import Awards
+from ..models.nominees import Nominees
 
 
 class NomineesSerialiser(serializers.ModelSerializer):
     """
     Handles the serialization process of this table.
     """
+
     category_ID = serializers.CharField()
 
     class Meta:
         model = Nominees
-        fields = ["ID", "name", "description", "created_at",
-                  "updated_at", "image", "votes", "share_link",
-                  "category_ID"]
+        fields = [
+            "ID",
+            "name",
+            "description",
+            "created_at",
+            "updated_at",
+            "image",
+            "votes",
+            "share_link",
+            "category_ID",
+        ]
         read_only_fields = ["ID", "created_at"]
-
 
     def validate_category_ID(self, value):
         """
@@ -33,8 +44,7 @@ class NomineesSerialiser(serializers.ModelSerializer):
             # Treat value as a category name
             category = Awards.objects.filter(name=value).first()
             if not category:
-                raise serializers.ValidationError("Invalid award name"
-                                                  +" or UUID")
+                raise serializers.ValidationError("Invalid award name" + " or UUID") from None
 
         # Return the UUID for internal use
         return category
@@ -45,14 +55,12 @@ class NomineesSerialiser(serializers.ModelSerializer):
         """
         # Assign the correct UUID from the validated data
         category_id = validated_data.pop("category_ID")
-        return Nominees.objects.create(category_ID=category_id,
-                                       **validated_data)
+        return Nominees.objects.create(category_ID=category_id, **validated_data)
 
     def validate_name(self, value):
         """
         Makes sure names are unique.
         """
         if Nominees.objects.filter(name__iexact=value).exists():
-            raise serializers.ValidationError(
-                "A nominee with this name exists")
+            raise serializers.ValidationError("A nominee with this name exists")
         return value

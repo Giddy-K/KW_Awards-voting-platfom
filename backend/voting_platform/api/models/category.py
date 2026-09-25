@@ -1,5 +1,6 @@
-from django.db import models
 import uuid
+
+from django.db import models
 
 
 class Category(models.Model):
@@ -14,5 +15,5 @@ class Category(models.Model):
 
     class Meta:
         indexes = [
-            models.Index(fields=['name']),
+            models.Index(fields=["name"]),
         ]

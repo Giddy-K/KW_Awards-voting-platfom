@@ -1,13 +1,17 @@
 """
 Handels the object-to-json and viseversa converts
 """
+
 from rest_framework import serializers
-from ..models.vote import Votes, Nominees
+
+from ..models.vote import Votes
+
 
 class VotesSerializer(serializers.ModelSerializer):
     """
     Handles the serialization process of this table.
     """
+
     class Meta:
         model = Votes
         fields = ["ID", "sub_category", "nominee"]

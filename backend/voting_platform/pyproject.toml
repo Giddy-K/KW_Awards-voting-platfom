@@ -1,0 +1,26 @@
+[tool.pytest.ini_options]
+DJANGO_SETTINGS_MODULE = "voting_platform.settings.test"
+python_files = ["test_*.py"]
+testpaths = ["tests"]
+addopts = "-ra --strict-markers --strict-config"
+
+[tool.ruff]
+line-length = 100
+target-version = "py312"
+extend-exclude = ["migrations"]
+
+[tool.ruff.lint]
+# E/W pycodestyle, F pyflakes, I isort, B bugbear, UP pyupgrade, C4 comprehensions
+select = ["E", "F", "W", "I", "B", "UP", "C4"]
+# Line length is enforced by `ruff format`; long strings/comments are left alone.
+ignore = ["E501"]
+
+[tool.ruff.lint.per-file-ignores]
+# Django settings idiom: star-imports from the base settings module.
+"voting_platform/settings/*.py" = ["F403", "F405", "E402"]
+
+[tool.ruff.lint.isort]
+known-first-party = ["api", "voting_platform"]
+
+[tool.ruff.format]
+quote-style = "double"

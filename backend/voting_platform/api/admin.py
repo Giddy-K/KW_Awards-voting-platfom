@@ -1,4 +1,3 @@
-
 """from django.contrib import admin
 from .models import User
 from authemail.admin import EmailUserAdmin
@@ -13,7 +12,7 @@ admin.site.unregister(get_user_model())
 admin.site.register(User, CustomUserAdmin)"""
 
 from django.contrib import admin
+
 from .models.category import Category
 
 admin.site.register(Category)
-
