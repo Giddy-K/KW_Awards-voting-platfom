@@ -159,19 +159,27 @@ def test_errors_are_identical_for_unknown_phone_expired_and_wrong_code(api, sms_
 
 
 def test_f16_attempt_limit_locks_the_challenge_even_for_the_right_code(api, sms_outbox, settings):
-    request_code(api)
-    good = code_from(sms_outbox)
-    wrong = "000000" if good != "000000" else "111111"
-    for _ in range(settings.OTP_MAX_ATTEMPTS):
-        assert verify(api, wrong).status_code == 400
-    assert verify(api, good).status_code == 400  # correct code, but the challenge is exhausted
-    assert OTPChallenge.objects.get().attempts == settings.OTP_MAX_ATTEMPTS
-    reasons = list(
-        AuditLog.objects.filter(action=AuditAction.OTP_FAILED).values_list("metadata", flat=True)
-    )
-    assert reasons[0]["reason"] == "attempts_exhausted"
-    request_code(api)  # a fresh code works again
-    assert verify(api, code_from(sms_outbox)).status_code == 200
+    # Phase 2.2: every write in this test is frozen to the SAME instant, deliberately forcing
+    # the created_at tie that made this test flaky (AUDIT.md "Phase 2.2 results"): with several
+    # OTP_FAILED rows sharing one created_at, AuditLog's default ordering needs its `seq`
+    # tiebreaker to reliably put the last one (attempts_exhausted) first. Without that
+    # tiebreaker this reproduces the flake on every run instead of rarely.
+    with time_machine.travel(timezone.now(), tick=False):
+        request_code(api)
+        good = code_from(sms_outbox)
+        wrong = "000000" if good != "000000" else "111111"
+        for _ in range(settings.OTP_MAX_ATTEMPTS):
+            assert verify(api, wrong).status_code == 400
+        assert verify(api, good).status_code == 400  # right code, but the challenge is exhausted
+        assert OTPChallenge.objects.get().attempts == settings.OTP_MAX_ATTEMPTS
+        reasons = list(
+            AuditLog.objects.filter(action=AuditAction.OTP_FAILED).values_list(
+                "metadata", flat=True
+            )
+        )
+        assert reasons[0]["reason"] == "attempts_exhausted"
+        request_code(api)  # a fresh code works again
+        assert verify(api, code_from(sms_outbox)).status_code == 200
 
 
 def test_codes_expire_after_five_minutes(api, sms_outbox):

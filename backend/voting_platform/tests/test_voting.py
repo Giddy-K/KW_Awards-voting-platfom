@@ -610,6 +610,7 @@ def test_votes_are_append_only_in_postgres_even_for_raw_sql():
                 "UPDATE voting_vote SET voter_id = voter_id, created_at = now() WHERE id = %s",
                 [vote.pk],
             ),
+            ("UPDATE voting_vote SET seq = 999999 WHERE id = %s", [vote.pk]),  # Phase 2.2
             ("DELETE FROM voting_vote WHERE id = %s", [vote.pk]),
         ):
             with pytest.raises(DatabaseError), transaction.atomic():

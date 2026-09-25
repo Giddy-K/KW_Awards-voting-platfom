@@ -4,6 +4,7 @@ from django.core.validators import MinValueValidator
 from django.db import models
 from django.db.models import Q
 
+from common.db import NextVal
 from common.models import BaseModel
 from common.phone import mask_phone
 
@@ -62,9 +63,13 @@ class Payment(BaseModel):
     raw_callback = models.JSONField(default=dict, blank=True)
     result_code = models.IntegerField(null=True, blank=True)
     result_desc = models.CharField(max_length=255, blank=True)
+    # Phase 2.2: see AuditLog.seq -- a deterministic, DB-assigned tiebreaker for created_at.
+    seq = models.BigIntegerField(
+        unique=True, editable=False, db_default=NextVal("payments_payment_seq_seq")
+    )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-seq"]
         constraints = [
             models.CheckConstraint(name="payment_amount_positive", condition=Q(amount__gt=0)),
             models.CheckConstraint(

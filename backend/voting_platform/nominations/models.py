@@ -6,6 +6,7 @@ from django.core.validators import MaxLengthValidator, URLValidator
 from django.db import models
 from django.db.models import Q
 
+from common.db import NextVal
 from common.models import BaseModel
 
 
@@ -96,9 +97,13 @@ class Nomination(BaseModel):
     )
     reviewed_at = models.DateTimeField(null=True, blank=True)
     rejection_reason = models.CharField(max_length=500, blank=True)
+    # Phase 2.2: see AuditLog.seq -- a deterministic, DB-assigned tiebreaker for created_at.
+    seq = models.BigIntegerField(
+        unique=True, editable=False, db_default=NextVal("nominations_nomination_seq_seq")
+    )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-seq"]
         constraints = [
             models.UniqueConstraint(
                 fields=["nominee", "award"], name="nomination_nominee_award_unique"

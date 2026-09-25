@@ -2,6 +2,7 @@ from django.conf import settings
 from django.core.exceptions import PermissionDenied
 from django.db import models
 
+from common.db import NextVal
 from common.models import BaseModel
 
 
@@ -64,10 +65,18 @@ class AuditLog(BaseModel):
     ip_address = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=300, blank=True)
 
+    # Phase 2.2: database-assigned insertion order. created_at (millisecond resolution) is not
+    # fine-grained enough to order several rows written in the same tick deterministically (see
+    # AUDIT.md "Phase 2.2 results"); `seq` is a PostgreSQL sequence value assigned atomically by
+    # the database on INSERT, so it is a strict, gap-tolerant, race-free tiebreaker.
+    seq = models.BigIntegerField(
+        unique=True, editable=False, db_default=NextVal("audit_auditlog_seq_seq")
+    )
+
     objects = AuditLogQuerySet.as_manager()
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-seq"]
         indexes = [
             models.Index(fields=["action", "-created_at"]),
             models.Index(fields=["target_type", "target_id"]),

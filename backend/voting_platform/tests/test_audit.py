@@ -56,6 +56,7 @@ def test_entries_are_immutable_in_postgres_even_for_raw_sql():
         for sql in (
             "UPDATE audit_auditlog SET action = 'x' WHERE id = %s",
             "UPDATE audit_auditlog SET metadata = '{}' WHERE id = %s",
+            "UPDATE audit_auditlog SET seq = 999999 WHERE id = %s",  # Phase 2.2
             "DELETE FROM audit_auditlog WHERE id = %s",
         ):
             with pytest.raises(DatabaseError), transaction.atomic():

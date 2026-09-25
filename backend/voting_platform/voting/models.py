@@ -4,6 +4,7 @@ from django.db import models
 from django.db.models import Q
 from django.utils import timezone
 
+from common.db import NextVal
 from common.models import BaseModel
 from common.phone import mask_phone
 
@@ -14,9 +15,13 @@ class Voter(BaseModel):
     phone_e164 = models.CharField(max_length=16, unique=True)
     verified_at = models.DateTimeField(null=True, blank=True)
     is_blocked = models.BooleanField(default=False)
+    # Phase 2.2: see AuditLog.seq -- a deterministic, DB-assigned tiebreaker for created_at.
+    seq = models.BigIntegerField(
+        unique=True, editable=False, db_default=NextVal("voting_voter_seq_seq")
+    )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-seq"]
 
     @property
     def masked_phone(self):
@@ -44,9 +49,13 @@ class OTPChallenge(BaseModel):
     consumed_at = models.DateTimeField(null=True, blank=True)
     requested_ip = models.GenericIPAddressField(null=True, blank=True)
     user_agent = models.CharField(max_length=300, blank=True)
+    # Phase 2.2: see AuditLog.seq -- a deterministic, DB-assigned tiebreaker for created_at.
+    seq = models.BigIntegerField(
+        unique=True, editable=False, db_default=NextVal("voting_otpchallenge_seq_seq")
+    )
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-seq"]
         indexes = [models.Index(fields=["voter", "-created_at"])]
 
     def __str__(self):
@@ -124,11 +133,18 @@ class Vote(BaseModel):
         related_name="voided_votes",
     )
     void_reason = models.CharField(max_length=500, blank=True)
+    # Phase 2.2: see AuditLog.seq -- a deterministic, DB-assigned tiebreaker for created_at.
+    # Included in the append-only trigger's immutable-column check (see the migration): a
+    # voided vote may still change voided_at/voided_by/void_reason, but seq, like every other
+    # column, is fixed at insert.
+    seq = models.BigIntegerField(
+        unique=True, editable=False, db_default=NextVal("voting_vote_seq_seq")
+    )
 
     objects = VoteQuerySet.as_manager()
 
     class Meta:
-        ordering = ["-created_at"]
+        ordering = ["-seq"]
         permissions = [("void_vote", "Can void votes")]
         constraints = [
             # One *active* (non-voided) free vote per voter per award, enforced by the
