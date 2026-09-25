@@ -469,13 +469,62 @@ def test_voided_votes_are_excluded_from_tallies_but_the_row_remains():
     assert Vote.objects.count() == 8 and Vote.objects.active().count() == 6
 
 
-def test_a_voided_free_vote_still_blocks_a_second_free_vote():
-    """Voiding removes the vote from the count; it does not hand the voter a fresh vote."""
+def test_voiding_a_free_vote_frees_the_slot_so_the_voter_can_vote_again():
+    """Voiding a free vote gives the voter their free vote back in that award (Phase 2.1)."""
     award = make_award(make_category(make_event()))
     first, second = make_nomination(award), make_nomination(award)
     voter = make_voter()
-    make_vote(voter, first).void(make_event_admin(), "fraud")
-    assert cast(voter_client(voter), second).status_code == 409
+    client = voter_client(voter)
+    original_response = cast(client, first)
+    assert original_response.status_code == 201
+    original = Vote.objects.get(pk=original_response.data["id"])
+    admin_user = make_event_admin()
+    original.void(admin_user, "fraud")
+
+    response = cast(client, second)
+    assert response.status_code == 201, response.data
+    new_vote = Vote.objects.get(pk=response.data["id"])
+    assert new_vote.voter == voter and new_vote.nomination == second and new_vote.voided_at is None
+
+    entries = list(AuditLog.objects.filter(action=AuditAction.VOTE_CAST).order_by("created_at"))
+    assert len(entries) == 2
+    assert [e.target_id for e in entries] == [str(original.id), str(new_vote.id)]
+
+
+def test_a_second_active_free_vote_is_still_rejected_after_a_void_elsewhere():
+    """Voiding one vote does not loosen the one-active-free-vote-per-award rule generally."""
+    award = make_award(make_category(make_event()))
+    first, second, third = (
+        make_nomination(award),
+        make_nomination(award),
+        make_nomination(award),
+    )
+    voter = make_voter()
+    client = voter_client(voter)
+    assert cast(client, first).status_code == 201
+    # A different, unrelated voided vote in the same award changes nothing about this voter's
+    # still-active vote: a duplicate is still rejected.
+    make_vote(make_voter(), second).void(make_event_admin(), "unrelated")
+    again = cast(client, third)
+    assert again.status_code == 409 and again.data["code"] == "already_voted"
+
+
+def test_re_voting_after_a_void_keeps_the_voided_row_and_only_the_new_vote_is_active():
+    award = make_award(make_category(make_event()))
+    first, second = make_nomination(award), make_nomination(award)
+    voter = make_voter()
+    original = make_vote(voter, first)
+    original.void(make_event_admin(), "fraud")
+    client = voter_client(voter)
+    response = cast(client, second)
+    assert response.status_code == 201
+    rows = Vote.objects.filter(voter=voter, award=award)
+    assert rows.count() == 2
+    assert rows.get(pk=original.pk).voided_at is not None
+    assert rows.exclude(pk=original.pk).get().voided_at is None
+    # database truth, not just the ORM guard: exactly one *active* free vote for this pair
+    active = Vote.objects.active().filter(voter=voter, award=award, source="free")
+    assert active.count() == 1
 
 
 # --- database-level guarantees ----------------------------------------------------
@@ -487,6 +536,18 @@ def test_database_rejects_a_second_free_vote_for_the_same_voter_and_award():
     make_vote(voter, nomination)
     with pytest.raises(IntegrityError), transaction.atomic():
         make_vote(voter, nomination)
+
+
+def test_database_allows_a_re_vote_after_void_but_still_rejects_two_active_ones():
+    """The partial unique index only covers non-voided free votes (Phase 2.1)."""
+    award = make_award(make_category(make_event()))
+    a, b, c = make_nomination(award), make_nomination(award), make_nomination(award)
+    voter = make_voter()
+    first = make_vote(voter, a)
+    first.void(make_event_admin(), "fraud")
+    make_vote(voter, b)  # allowed: only one voided row exists, no active conflict
+    with pytest.raises(IntegrityError), transaction.atomic():
+        make_vote(voter, c)  # still rejected: an active free vote already exists (b)
 
 
 def test_database_check_constraints_on_source_quantity_and_payment():

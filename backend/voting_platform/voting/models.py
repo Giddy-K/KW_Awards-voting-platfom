@@ -131,11 +131,14 @@ class Vote(BaseModel):
         ordering = ["-created_at"]
         permissions = [("void_vote", "Can void votes")]
         constraints = [
-            # One free vote per voter per award, enforced by the database.
+            # One *active* (non-voided) free vote per voter per award, enforced by the
+            # database. Voiding a free vote frees the slot: the voter may cast a new one
+            # (Phase 2.1). The voided row itself is kept (append-only) and simply falls
+            # outside this constraint once voided_at is set.
             models.UniqueConstraint(
                 fields=["voter", "award"],
-                condition=Q(source="free"),
-                name="vote_one_free_per_voter_per_award",
+                condition=Q(source="free", voided_at__isnull=True),
+                name="vote_one_active_free_per_voter_per_award",
             ),
             models.CheckConstraint(
                 name="vote_source_rules",
