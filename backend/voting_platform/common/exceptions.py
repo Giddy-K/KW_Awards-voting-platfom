@@ -44,3 +44,14 @@ class Conflict(ApiError):
     status_code = status.HTTP_409_CONFLICT
     default_detail = "The request conflicts with the current state."
     default_code = "conflict"
+
+
+class UnsupportedPhoneNumber(ApiError):
+    """The one intentional exception to the OTP flow's phone-existence-blind responses
+    (Phase 2.2): whether a number is a valid Kenyan mobile is public information, unlike
+    whether that specific number is a registered voter. See ``OTP_ALLOWED_REGIONS``.
+    """
+
+    status_code = status.HTTP_400_BAD_REQUEST
+    default_detail = "Enter a valid Kenyan mobile phone number."
+    default_code = "unsupported_phone_number"

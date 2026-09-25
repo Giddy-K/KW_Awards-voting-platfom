@@ -3,9 +3,11 @@
 import re
 from datetime import timedelta
 
+import phonenumbers
 import pytest
 import time_machine
 from django.utils import timezone
+from phonenumbers import PhoneNumberType
 
 from audit.models import AuditAction, AuditLog
 from voting.authentication import VoterToken
@@ -92,6 +94,59 @@ def test_invalid_and_missing_phone_numbers_are_rejected(api, sms_outbox):
         assert request_code(api, bad).status_code == 400, bad
     assert api.post(REQUEST, {"captcha_token": "t"}).status_code == 400
     assert sms_outbox == []
+
+
+# --- F-XX: OTP requests are restricted to Kenyan mobile numbers (Phase 2.2) --------------
+# The one intentional, documented exception to the OTP flow's otherwise phone-existence-blind
+# responses: whether a number is a valid Kenyan mobile is public information (AUDIT.md
+# "Phase 2.2 results"), unlike whether that specific number is a registered voter.
+
+
+def example_number(region, number_type):
+    number = phonenumbers.example_number_for_type(region, number_type)
+    return phonenumbers.format_number(number, phonenumbers.PhoneNumberFormat.E164)
+
+
+def test_otp_request_accepts_a_kenyan_mobile_number(api, sms_outbox):
+    response = request_code(api, "+254712123456")
+    assert response.status_code == 202
+    assert len(sms_outbox) == 1
+
+
+def test_otp_request_rejects_a_kenyan_landline_number(api, sms_outbox):
+    landline = example_number("KE", PhoneNumberType.FIXED_LINE)
+    response = request_code(api, landline)
+    assert response.status_code == 400
+    assert response.data["code"] == "unsupported_phone_number"
+    assert sms_outbox == []
+    assert not Voter.objects.filter(phone_e164=landline).exists()
+
+
+def test_otp_request_rejects_a_foreign_mobile_number(api, sms_outbox):
+    foreign = example_number("TZ", PhoneNumberType.MOBILE)
+    response = request_code(api, foreign)
+    assert response.status_code == 400
+    assert response.data["code"] == "unsupported_phone_number"
+    assert sms_outbox == []
+    assert not Voter.objects.filter(phone_e164=foreign).exists()
+
+
+def test_otp_request_rejects_a_premium_rate_number(api, sms_outbox):
+    premium = example_number("KE", PhoneNumberType.PREMIUM_RATE)
+    response = request_code(api, premium)
+    assert response.status_code == 400
+    assert response.data["code"] == "unsupported_phone_number"
+    assert sms_outbox == []
+    assert not Voter.objects.filter(phone_e164=premium).exists()
+
+
+def test_otp_allowed_regions_is_configurable(api, sms_outbox, settings):
+    foreign = example_number("TZ", PhoneNumberType.MOBILE)
+    assert request_code(api, foreign).status_code == 400
+    settings.OTP_ALLOWED_REGIONS = ["KE", "TZ"]
+    response = request_code(api, foreign)
+    assert response.status_code == 202
+    assert len(sms_outbox) == 1
 
 
 def test_phone_formats_normalise_to_the_same_voter(api):

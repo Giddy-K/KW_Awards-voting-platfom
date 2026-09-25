@@ -17,7 +17,13 @@ class _PhoneMixin(serializers.Serializer):
             raise serializers.ValidationError(str(exc)) from exc
 
 
-class OTPRequestSerializer(_PhoneMixin):
+class OTPRequestSerializer(serializers.Serializer):
+    # Deliberately NOT _PhoneMixin: the OTP request endpoint applies its own, stricter
+    # region/type check (Phase 2.2, common.phone.normalize_phone_strict via
+    # voting.views.OTPRequestView) so every kind of rejection -- garbage input, a Kenyan
+    # landline, a foreign mobile, a premium-rate number -- returns the one specific
+    # `unsupported_phone_number` code, not a mix of generic field errors and that code.
+    phone = serializers.CharField(max_length=32)
     captcha_token = serializers.CharField(max_length=2048, required=False, allow_blank=True)
 
 

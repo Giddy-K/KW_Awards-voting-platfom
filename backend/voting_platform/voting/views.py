@@ -1,3 +1,4 @@
+from django.conf import settings
 from django_filters import rest_framework as filters
 from drf_spectacular.utils import extend_schema
 from rest_framework import mixins, serializers, status, viewsets
@@ -8,9 +9,9 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsEventAdmin
 from common.captcha import verify_captcha
-from common.exceptions import ApiError
+from common.exceptions import ApiError, UnsupportedPhoneNumber
 from common.ip import get_client_ip
-from common.phone import InvalidPhoneNumber, normalize_phone
+from common.phone import InvalidPhoneNumber, normalize_phone, normalize_phone_strict
 
 from . import otp, services
 from .authentication import IsVoter, VoterOrStaffAuthentication, issue_voter_token
@@ -54,10 +55,18 @@ class OTPRequestView(APIView):
     def post(self, request):
         serializer = OTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
+        # Phase 2.2: the one intentional exception to this endpoint's otherwise
+        # phone-existence-blind responses -- see common.phone.normalize_phone_strict.
+        try:
+            phone = normalize_phone_strict(
+                serializer.validated_data["phone"], settings.OTP_ALLOWED_REGIONS
+            )
+        except InvalidPhoneNumber:
+            raise UnsupportedPhoneNumber() from None
         token = serializer.validated_data.get("captcha_token", "")
         if not verify_captcha(token, get_client_ip(request)):
             raise ApiError("CAPTCHA verification failed.", code="captcha_failed")
-        otp.request_otp(serializer.validated_data["phone"], request=request)
+        otp.request_otp(phone, request=request)
         return Response(OTP_REQUEST_RESPONSE, status=status.HTTP_202_ACCEPTED)
 
 
