@@ -1,9 +1,11 @@
 from django.db.models import Q
 from django_filters import rest_framework as filters
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import serializers, viewsets
 
 from accounts.permissions import IsEventAdmin
 from common.phone import InvalidPhoneNumber, normalize_phone
+from common.schema import error_responses
 
 from .models import AuditLog
 from .services import hash_phone
@@ -69,6 +71,10 @@ class AuditLogSerializer(serializers.ModelSerializer):
         return metadata
 
 
+@extend_schema_view(
+    list=extend_schema(responses={200: AuditLogSerializer, **error_responses(400, 401, 403)}),
+    retrieve=extend_schema(responses={200: AuditLogSerializer, **error_responses(401, 403, 404)}),
+)
 class AuditLogViewSet(viewsets.ReadOnlyModelViewSet):
     """Read-only audit trail for dispute resolution (event admins). Entries cannot be changed."""
 

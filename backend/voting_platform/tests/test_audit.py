@@ -218,7 +218,9 @@ def test_hash_phone_differs_from_the_raw_number_and_depends_on_the_key(settings)
 def test_otp_requested_and_failed_do_not_reference_an_unverified_voter(api, sms_outbox):
     request_code(api, "0712345678")
     verify(api, "000000")  # wrong code; the voter is still unverified
-    entries = AuditLog.objects.filter(action__in=[AuditAction.OTP_REQUESTED, AuditAction.OTP_FAILED])
+    entries = AuditLog.objects.filter(
+        action__in=[AuditAction.OTP_REQUESTED, AuditAction.OTP_FAILED]
+    )
     assert entries.exists()
     for row in entries:
         assert row.actor_voter is None
@@ -250,9 +252,7 @@ def test_later_entries_use_actor_voter_once_the_voter_has_verified(api, sms_outb
     assert "phone_hash" not in later.metadata
 
 
-def test_phone_filter_finds_pre_and_post_verification_entries_for_the_same_number(
-    api, sms_outbox
-):
+def test_phone_filter_finds_pre_and_post_verification_entries_for_the_same_number(api, sms_outbox):
     request_code(api, "0712345678")  # pre-verification: actor_voter null, phone_hash set
     verify(api, code_from(sms_outbox))  # verifies; OTP_VERIFIED references actor_voter
     request_code(api, "0712345678")  # post-verification: actor_voter set, no phone_hash

@@ -1,6 +1,6 @@
 from django.conf import settings
 from django_filters import rest_framework as filters
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import mixins, serializers, status, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -12,6 +12,7 @@ from common.captcha import verify_captcha
 from common.exceptions import CaptchaFailed, UnsupportedPhoneNumber
 from common.ip import get_client_ip
 from common.phone import InvalidPhoneNumber, normalize_phone, normalize_phone_strict
+from common.schema import error_responses
 
 from . import otp, services
 from .authentication import IsVoter, VoterOrStaffAuthentication, issue_voter_token
@@ -51,7 +52,11 @@ class OTPRequestView(APIView):
         OTPRequestIPThrottle,
     ]
 
-    @extend_schema(request=OTPRequestSerializer, responses={202: DetailSerializer}, auth=[])
+    @extend_schema(
+        request=OTPRequestSerializer,
+        responses={202: DetailSerializer, **error_responses(400, 429, 503)},
+        auth=[],
+    )
     def post(self, request):
         serializer = OTPRequestSerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -80,7 +85,11 @@ class OTPVerifyView(APIView):
     permission_classes = [AllowAny]
     throttle_classes = [OTPVerifyPhoneThrottle, OTPVerifyIPThrottle]
 
-    @extend_schema(request=OTPVerifySerializer, responses={200: VoterTokenSerializer}, auth=[])
+    @extend_schema(
+        request=OTPVerifySerializer,
+        responses={200: VoterTokenSerializer, **error_responses(400, 429)},
+        auth=[],
+    )
     def post(self, request):
         serializer = OTPVerifySerializer(data=request.data)
         serializer.is_valid(raise_exception=True)
@@ -112,6 +121,10 @@ class VoteFilter(filters.FilterSet):
             raise serializers.ValidationError({"phone": str(exc)}) from exc
 
 
+@extend_schema_view(
+    list=extend_schema(responses={200: StaffVoteSerializer, **error_responses(400, 401, 403)}),
+    retrieve=extend_schema(responses={200: StaffVoteSerializer, **error_responses(401, 403, 404)}),
+)
 class VoteViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """Voters cast votes here; event admins review and void them.
 
@@ -152,7 +165,13 @@ class VoteViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
             "void": VoidSerializer,
         }.get(self.action, StaffVoteSerializer)
 
-    @extend_schema(request=VoteCastSerializer, responses={201: VoteReceiptSerializer})
+    @extend_schema(
+        request=VoteCastSerializer,
+        responses={
+            201: VoteReceiptSerializer,
+            **error_responses(400, 401, 403, 404, 409, 429),
+        },
+    )
     def create(self, request):
         """Cast a free vote for a nomination (one per award; 409 if you already voted)."""
         serializer = VoteCastSerializer(data=request.data)
@@ -162,7 +181,7 @@ class VoteViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
         )
         return Response(VoteReceiptSerializer(vote).data, status=status.HTTP_201_CREATED)
 
-    @extend_schema(responses=MyVoteSerializer(many=True))
+    @extend_schema(responses={200: MyVoteSerializer(many=True), **error_responses(401, 403)})
     @action(detail=False, methods=["get"], filterset_class=None)
     def mine(self, request):
         """Which awards the authenticated voter has voted in (no tallies)."""
@@ -170,7 +189,10 @@ class VoteViewSet(mixins.ListModelMixin, mixins.RetrieveModelMixin, viewsets.Gen
         serializer = MyVoteSerializer(page, many=True)
         return self.get_paginated_response(serializer.data)
 
-    @extend_schema(request=VoidSerializer, responses=StaffVoteSerializer)
+    @extend_schema(
+        request=VoidSerializer,
+        responses={200: StaffVoteSerializer, **error_responses(400, 401, 403, 404, 409)},
+    )
     @action(detail=True, methods=["post"])
     def void(self, request, pk=None):
         """Exclude a vote from all tallies (event admins). The row is kept."""

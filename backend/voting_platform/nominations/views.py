@@ -1,6 +1,6 @@
 from django.db.models import Prefetch
 from django_filters import rest_framework as filters
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import generics, mixins, viewsets
 from rest_framework.decorators import action
 from rest_framework.permissions import AllowAny
@@ -11,6 +11,7 @@ from accounts.roles import MODERATOR, user_has_role
 from common.captcha import verify_captcha
 from common.exceptions import CaptchaFailed
 from common.ip import get_client_ip
+from common.schema import error_responses
 from events.models import Award, EventStatus
 
 from . import services
@@ -46,6 +47,13 @@ def public_nominations():
     )
 
 
+@extend_schema_view(
+    # get_serializer_class picks StaffNominationSerializer/PublicNominationSerializer per
+    # request; documented as the public shape (the same default schema generation itself uses
+    # for an anonymous/fake request) -- the response is a superset for moderators.
+    list=extend_schema(responses={200: PublicNominationSerializer, **error_responses(400)}),
+    retrieve=extend_schema(responses={200: PublicNominationSerializer, **error_responses(404)}),
+)
 class NominationViewSet(
     mixins.CreateModelMixin,
     mixins.ListModelMixin,
@@ -85,7 +93,7 @@ class NominationViewSet(
 
     @extend_schema(
         request={"multipart/form-data": NominationSubmitSerializer},
-        responses={201: SubmissionResultSerializer},
+        responses={201: SubmissionResultSerializer, **error_responses(400, 409, 429)},
     )
     def create(self, request, *args, **kwargs):
         """Submit a nomination (multipart, CAPTCHA-protected). It stays hidden until approved."""
@@ -98,7 +106,10 @@ class NominationViewSet(
         data = SubmissionResultSerializer(nomination, context=self.get_serializer_context()).data
         return Response(data, status=201)
 
-    @extend_schema(request=None, responses=StaffNominationSerializer)
+    @extend_schema(
+        request=None,
+        responses={200: StaffNominationSerializer, **error_responses(401, 403, 404, 409)},
+    )
     @action(detail=True, methods=["post"])
     def approve(self, request, pk=None):
         """Approve a pending nomination (moderators)."""
@@ -109,7 +120,10 @@ class NominationViewSet(
             StaffNominationSerializer(nomination, context=self.get_serializer_context()).data
         )
 
-    @extend_schema(request=RejectSerializer, responses=StaffNominationSerializer)
+    @extend_schema(
+        request=RejectSerializer,
+        responses={200: StaffNominationSerializer, **error_responses(400, 401, 403, 404, 409)},
+    )
     @action(detail=True, methods=["post"])
     def reject(self, request, pk=None):
         """Reject a pending nomination with a reason (moderators)."""
@@ -127,6 +141,9 @@ class NominationViewSet(
         )
 
 
+@extend_schema_view(
+    retrieve=extend_schema(responses={200: NomineeProfileSerializer, **error_responses(404)})
+)
 class NomineeViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
     """Public nominee profile with their approved nominations only."""
 
@@ -145,6 +162,11 @@ class NomineeViewSet(mixins.RetrieveModelMixin, viewsets.GenericViewSet):
         )
 
 
+@extend_schema_view(
+    get=extend_schema(
+        responses={200: PublicNominationSerializer(many=True), **error_responses(404)}
+    )
+)
 class AwardNominationsView(generics.ListAPIView):
     """Approved nominations for one award (public)."""
 

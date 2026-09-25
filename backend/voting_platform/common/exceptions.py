@@ -6,8 +6,11 @@ Phase 2.3: every non-2xx response, whatever raised it, goes through :func:`excep
 ``tests/test_error_responses.py``.
 """
 
+from django.core.exceptions import PermissionDenied as DjangoPermissionDenied
+from django.http import Http404
 from rest_framework import status
 from rest_framework.exceptions import APIException, ErrorDetail
+from rest_framework.exceptions import AuthenticationFailed as DRFAuthenticationFailed
 from rest_framework.exceptions import MethodNotAllowed as DRFMethodNotAllowed
 from rest_framework.exceptions import NotAuthenticated as DRFNotAuthenticated
 from rest_framework.exceptions import NotFound as DRFNotFound
@@ -116,6 +119,7 @@ class UnsupportedPhoneNumber(ApiError):
 # `default_code` is pulled in the same way as our own ApiError subclasses (never hand-typed as
 # a string) -- see `all_error_codes`.
 _THIRD_PARTY_CODE_SOURCES = [
+    DRFAuthenticationFailed,
     DRFNotAuthenticated,
     DRFPermissionDenied,
     DRFNotFound,
@@ -159,6 +163,14 @@ def exception_handler(exc, context):
     from one of our :class:`ApiError` subclasses, a plain serializer ``ValidationError``, or a
     built-in DRF/SimpleJWT exception (401/403/404/405/429/...).
     """
+    # DRF's own default handler converts Http404 / Django's PermissionDenied into its own
+    # NotFound / PermissionDenied, but only as a local variable inside that function -- it
+    # never reassigns our `exc`, so code extraction below would otherwise see the original
+    # Django exception (which has no .get_codes()). Do the same conversion here first.
+    if isinstance(exc, Http404):
+        exc = DRFNotFound(*exc.args)
+    elif isinstance(exc, DjangoPermissionDenied):
+        exc = DRFPermissionDenied(*exc.args)
     response = drf_exception_handler(exc, context)
     if response is None:
         return None
@@ -170,12 +182,22 @@ def exception_handler(exc, context):
         # Our own ApiError shape already; just add the always-present "fields" key.
         response.data = {"code": data["code"], "detail": str(data["detail"]), "fields": None}
         return response
-    code = getattr(exc, "default_code", "error")
     if isinstance(exc, DRFValidationError):
         # `data` is the usual per-field {"field": ["msg", ...], ...} (or a flat list for a
-        # non-field error); carry it under "fields" instead of as the whole body.
-        response.data = {"code": code, "detail": "Validation failed.", "fields": data}
+        # non-field error); carry it under "fields" instead of as the whole body. The per-field
+        # codes inside it (exc.get_codes()) are too granular for one top-level `code`, so this
+        # uses the class's own default_code ("invalid") instead, same as everywhere else.
+        response.data = {
+            "code": DRFValidationError.default_code,
+            "detail": "Validation failed.",
+            "fields": data,
+        }
     else:
+        # exc.default_code is only the CLASS's fallback; some exceptions (e.g. SimpleJWT's
+        # AuthenticationFailed(msg, "no_active_account")) override the code per instance, which
+        # only shows up in exc.get_codes() (built from exc.detail), not the class attribute.
+        codes = exc.get_codes()
+        code = codes if isinstance(codes, str) else getattr(exc, "default_code", "error")
         detail = data.get("detail") if isinstance(data, dict) else data
         response.data = {"code": code, "detail": str(detail), "fields": None}
     return response

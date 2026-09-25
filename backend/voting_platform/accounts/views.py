@@ -8,6 +8,8 @@ from rest_framework_simplejwt.exceptions import InvalidToken, TokenError
 from rest_framework_simplejwt.tokens import RefreshToken
 from rest_framework_simplejwt.views import TokenObtainPairView, TokenRefreshView
 
+from common.schema import error_responses
+
 from .cookies import clear_refresh_cookie, set_refresh_cookie
 from .permissions import HasAjaxHeader
 from .serializers import AccessTokenSerializer, MeSerializer, StaffTokenObtainPairSerializer
@@ -34,7 +36,10 @@ class StaffTokenObtainPairView(TokenObtainPairView):
     permission_classes = [AllowAny, HasAjaxHeader]
     throttle_classes = [StaffLoginIPThrottle]
 
-    @extend_schema(responses=AccessTokenSerializer, parameters=[_AJAX_HEADER_PARAM])
+    @extend_schema(
+        responses={200: AccessTokenSerializer, **error_responses(400, 401, 403, 429)},
+        parameters=[_AJAX_HEADER_PARAM],
+    )
     def post(self, request, *args, **kwargs):
         response = super().post(request, *args, **kwargs)
         refresh = response.data.pop("refresh", None)
@@ -55,7 +60,7 @@ class StaffTokenRefreshView(TokenRefreshView):
 
     @extend_schema(
         request=None,
-        responses=AccessTokenSerializer,
+        responses={200: AccessTokenSerializer, **error_responses(400, 401, 403, 429)},
         parameters=[_AJAX_HEADER_PARAM],
     )
     def post(self, request, *args, **kwargs):
@@ -80,7 +85,11 @@ class LogoutView(APIView):
 
     permission_classes = [IsAuthenticated, HasAjaxHeader]
 
-    @extend_schema(request=None, responses={204: None}, parameters=[_AJAX_HEADER_PARAM])
+    @extend_schema(
+        request=None,
+        responses={204: None, **error_responses(401, 403)},
+        parameters=[_AJAX_HEADER_PARAM],
+    )
     def post(self, request):
         refresh_value = request.COOKIES.get(settings.REFRESH_COOKIE_NAME)
         if refresh_value:
@@ -102,6 +111,6 @@ class MeView(APIView):
 
     permission_classes = [IsAuthenticated]
 
-    @extend_schema(responses=MeSerializer)
+    @extend_schema(responses={200: MeSerializer, **error_responses(401)})
     def get(self, request):
         return Response(MeSerializer(request.user).data)

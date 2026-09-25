@@ -1,5 +1,5 @@
 from django.db.models import Prefetch, ProtectedError
-from drf_spectacular.utils import extend_schema
+from drf_spectacular.utils import extend_schema, extend_schema_view
 from rest_framework import viewsets
 from rest_framework.decorators import action
 from rest_framework.exceptions import NotFound
@@ -8,6 +8,7 @@ from rest_framework.response import Response
 
 from accounts.permissions import IsEventAdmin, IsEventAdminOrReadOnly
 from common.exceptions import Conflict
+from common.schema import error_responses
 from voting import results as results_service
 from voting.serializers import ResultsSerializer, StatsSerializer
 
@@ -21,6 +22,21 @@ from .serializers import (
     EventSerializer,
     SetStatusSerializer,
 )
+
+
+def crud_error_responses(serializer):
+    """Standard error responses for a public-read/event-admin-write ModelViewSet's default
+    actions (Phase 2.3) -- the 2xx shape is left to drf-spectacular's own inference."""
+    return extend_schema_view(
+        list=extend_schema(responses={200: serializer, **error_responses(400)}),
+        retrieve=extend_schema(responses={200: serializer, **error_responses(404)}),
+        create=extend_schema(responses={201: serializer, **error_responses(400, 401, 403)}),
+        update=extend_schema(responses={200: serializer, **error_responses(400, 401, 403, 404)}),
+        partial_update=extend_schema(
+            responses={200: serializer, **error_responses(400, 401, 403, 404)}
+        ),
+        destroy=extend_schema(responses={204: None, **error_responses(401, 403, 404, 409)}),
+    )
 
 
 class _EventScopedViewSet(viewsets.ModelViewSet):
@@ -42,6 +58,7 @@ class _EventScopedViewSet(viewsets.ModelViewSet):
             ) from exc
 
 
+@crud_error_responses(EventSerializer)
 class EventViewSet(_EventScopedViewSet):
     """Events with their categories and awards. Drafts are visible to event admins only."""
 
@@ -57,7 +74,10 @@ class EventViewSet(_EventScopedViewSet):
         )
         return exclude_drafts(queryset, self.request.user)
 
-    @extend_schema(request=SetStatusSerializer, responses=EventSerializer)
+    @extend_schema(
+        request=SetStatusSerializer,
+        responses={200: EventSerializer, **error_responses(400, 401, 403, 404, 409)},
+    )
     @action(detail=True, methods=["post"], url_path="set-status", permission_classes=[IsEventAdmin])
     def set_status(self, request, slug=None):
         """Change the event's status (validated transitions; audited)."""
@@ -67,7 +87,7 @@ class EventViewSet(_EventScopedViewSet):
         event = services.change_status(event, serializer.validated_data["status"], request=request)
         return Response(self.get_serializer(event).data)
 
-    @extend_schema(responses=ResultsSerializer, auth=[])
+    @extend_schema(responses={200: ResultsSerializer, **error_responses(404)}, auth=[])
     @action(detail=True, methods=["get"], permission_classes=[AllowAny])
     def results(self, request, slug=None):
         """Ranked results. Public only once the event's results are published (404 before);
@@ -78,7 +98,7 @@ class EventViewSet(_EventScopedViewSet):
         payload = results_service.event_results(event, request=request)
         return Response(ResultsSerializer(payload).data)
 
-    @extend_schema(responses=StatsSerializer)
+    @extend_schema(responses={200: StatsSerializer, **error_responses(401, 403, 404)})
     @action(detail=True, methods=["get"], permission_classes=[IsEventAdmin])
     def stats(self, request, slug=None):
         """Dashboard numbers: totals, votes over time, per-category counts (event admins)."""
@@ -86,6 +106,7 @@ class EventViewSet(_EventScopedViewSet):
         return Response(StatsSerializer(results_service.event_stats(event)).data)
 
 
+@crud_error_responses(CategorySerializer)
 class CategoryViewSet(_EventScopedViewSet):
     serializer_class = CategorySerializer
     filterset_class = CategoryFilter
@@ -96,6 +117,7 @@ class CategoryViewSet(_EventScopedViewSet):
         return exclude_drafts(queryset, self.request.user, "event__")
 
 
+@crud_error_responses(AwardSerializer)
 class AwardViewSet(_EventScopedViewSet):
     serializer_class = AwardSerializer
     filterset_class = AwardFilter
