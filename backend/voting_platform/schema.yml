@@ -25,6 +25,7 @@ paths:
           - otp.requested
           - otp.verified
           - permission.denied
+          - sms.budget_exhausted
           - staff.login
           - staff.login_failed
           - vote.cast
@@ -44,6 +45,7 @@ paths:
           * `staff.login` - Staff login
           * `staff.login_failed` - Staff login failed
           * `permission.denied` - Permission denied
+          * `sms.budget_exhausted` - SMS daily budget exhausted
       - in: query
         name: actor_user
         schema:
@@ -1300,6 +1302,7 @@ components:
       - staff.login
       - staff.login_failed
       - permission.denied
+      - sms.budget_exhausted
       type: string
       description: |-
         * `nomination.submitted` - Nomination submitted
@@ -1315,6 +1318,7 @@ components:
         * `staff.login` - Staff login
         * `staff.login_failed` - Staff login failed
         * `permission.denied` - Permission denied
+        * `sms.budget_exhausted` - SMS daily budget exhausted
     AuditLog:
       type: object
       properties:
