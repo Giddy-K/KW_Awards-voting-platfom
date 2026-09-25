@@ -1,127 +1,145 @@
 # KW Awards Voting Platform: Backend
 
-Django REST API for the KW Awards voting platform, backed by PostgreSQL.
-The React frontend lives in a separate repository
-(`KW_Awards-voting-platfom_frontend`).
+Django REST API for the KW Awards: public browsing of events, awards and nominees,
+phone-verified voting, nomination moderation and staff administration. PostgreSQL 16.
+The React frontend lives in a separate repository (`KW_Awards-voting-platfom_frontend`).
 
-> **Status:** early development. The API is not yet safe to expose publicly
-> (no authorization on most endpoints, no vote-integrity rules). See
-> `AUDIT.md` for the current findings and the roadmap.
+> **Status:** core redesigned (Phase 2). Free voting with SMS verification, moderation, results
+> and an audit trail are implemented and tested. Not yet built: paid voting (M-Pesa), S3 media
+> storage and deployment configuration. See `AUDIT.md` for the findings and roadmap.
 
 ## Requirements
 
 | Tool | Version |
 |---|---|
 | Python | 3.12 |
-| Django | 5.2 LTS |
-| Django REST framework | 3.18 |
+| Django / DRF | 5.2 LTS / 3.18 |
 | PostgreSQL | 16 |
 
-Dependencies are exact-pinned in `backend/voting_platform/requirements/`:
+Dependencies are exact-pinned in `backend/voting_platform/requirements/` (`base`, `prod`, `dev`).
 
-- `base.txt`: runtime dependencies
-- `prod.txt`: base + gunicorn + WhiteNoise (what `requirements.txt` points at)
-- `dev.txt`: base + pytest, pytest-django, ruff, pip-audit
+## Architecture
+
+```
+backend/voting_platform/
+├── accounts/      staff User (email login) + roles (Moderator, EventAdmin), JWT auth endpoints
+├── events/        Event (status + windows), Category ("genre"), Award; status transitions
+├── nominations/   Nominee, Nomination, public submission, moderation, hardened photo uploads
+├── voting/        Voter, OTP challenges, Vote (append-only), voter tokens, results/stats
+├── payments/      Payment schema only (M-Pesa comes later)
+├── audit/         append-only AuditLog and its read API
+├── common/        phone/IP/CAPTCHA/SMS/throttle helpers, seed_demo command
+└── voting_platform/  settings (base/dev/prod/test), URLs (/api/v1/…), WSGI/ASGI
+```
+
+Design rules worth knowing:
+
+- **Votes are rows, never counters.** Results are `SUM(quantity)` over non-voided votes. One free vote
+  per voter per award is a PostgreSQL partial unique index; the API inserts and maps the violation to
+  HTTP 409. Votes and audit entries are append-only in the ORM *and* in PostgreSQL (triggers). Voting
+  opens only when the event status **and** its time window both allow it.
+- **Two kinds of token.** Staff use a short-lived JWT access token (rotating, blacklisted refresh
+  tokens). Voters get a separate 30-minute *voter token* after SMS OTP verification; each is rejected
+  by the other's endpoints. DRF is deny-by-default; public endpoints opt in.
+- **Privacy.** Voter phone numbers are stored in E.164, masked (`+2547******12`) in every API
+  response, admin page and log line. OTP codes are stored only as a keyed hash.
+- **Abuse controls.** Scoped throttles (OTP per phone/IP, votes, nominations, staff login), Cloudflare
+  Turnstile on OTP request and nomination submission, client IP through django-ipware with an
+  explicit trusted-proxy chain.
 
 ## Local setup
 
 All commands run from `backend/voting_platform/`.
 
-1. **Clone and enter the project**
+```bash
+python -m venv .venv
+source .venv/bin/activate            # Windows: .venv\Scripts\activate
+pip install -r requirements/dev.txt
 
-   ```bash
-   git clone https://github.com/Giddy-K/KW_Awards-voting-platfom.git
-   cd KW_Awards-voting-platfom/backend/voting_platform
-   ```
+# PostgreSQL 16 (any local server, or Docker)
+docker run -d --name kw-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=vote_app -p 5432:5432 postgres:16
 
-2. **Create a virtual environment and install dev dependencies**
+cp .env.example .env                 # dev works with the defaults; set DB_PASSWORD if needed
+python manage.py migrate
+python manage.py seed_demo           # demo event, nominees and one user per role (DEBUG only)
+python manage.py runserver
+```
 
-   ```bash
-   python -m venv .venv
-   source .venv/bin/activate        # Windows: .venv\Scripts\activate
-   pip install -r requirements/dev.txt
-   ```
+`seed_demo` prints the demo staff logins (`admin@`, `moderator@`, `eventadmin@example.com`). In
+development SMS is printed to the server console, so the voter flow works without a provider:
 
-3. **Start PostgreSQL 16 and create a database**
+```bash
+B=http://127.0.0.1:8000/api/v1
+curl -X POST $B/voters/otp/request/ -H 'Content-Type: application/json' \
+     -d '{"phone":"0712345678","captcha_token":"dev"}'          # code appears in the server console
+curl -X POST $B/voters/otp/verify/  -H 'Content-Type: application/json' \
+     -d '{"phone":"0712345678","code":"123456"}'                 # -> {"token": ...}
+curl -X POST $B/votes/ -H 'Content-Type: application/json' -H "Authorization: Bearer $TOKEN" \
+     -d '{"nomination_id":"<id from GET /awards/<id>/nominations/>"}'
+```
 
-   Use any local Postgres 16, or Docker:
+- API: `/api/v1/` · Django admin: `/admin/` · OpenAPI schema and Swagger UI: `/api/schema/`,
+  `/api/schema/swagger-ui/` (staff, via a Django admin login)
+- The committed `schema.yml` is the contract for the frontend. Regenerate after API changes:
+  `python manage.py spectacular --file schema.yml --validate --fail-on-warn`
 
-   ```bash
-   docker run -d --name kw-pg -e POSTGRES_PASSWORD=postgres -e POSTGRES_DB=vote_app \
-     -p 5432:5432 postgres:16
-   ```
+## Endpoints (v1)
 
-   Or, with an existing server, `createdb vote_app`.
+| Area | Endpoints | Who |
+|---|---|---|
+| Auth | `auth/token/`, `auth/refresh/`, `auth/logout/`, `auth/me/` | staff |
+| Public read | `events/`, `events/{slug}/`, `awards/`, `categories/`, `awards/{id}/nominations/`, `nominations/`, `nominees/{id}/`, `events/{slug}/results/` (after publication) | anyone |
+| Public write | `nominations/` (multipart, CAPTCHA, throttled) | anyone |
+| Voter | `voters/otp/request/`, `voters/otp/verify/`, `votes/`, `votes/mine/` | voter token |
+| Moderator | `nominations/` (all statuses), `nominations/{id}/approve\|reject/` | Moderator |
+| Event admin | CRUD `events/`, `categories/`, `awards/`; `events/{slug}/set-status/`, `.../stats/`, `.../results/` any time; `votes/`, `votes/{id}/void/`; `audit-logs/` | EventAdmin |
 
-4. **Configure the environment**
+The full request/response contract and the auth requirement of every operation are in `schema.yml`.
 
-   ```bash
-   cp .env.example .env
-   ```
-
-   `manage.py` uses `voting_platform.settings.dev`, which has safe local
-   defaults (database `vote_app` as user `postgres` on `localhost`, emails
-   printed to the console, CORS for `localhost:3000/4500/5173`). Set
-   `DB_PASSWORD` (and any other values that differ) in `.env`.
-
-5. **Migrate, create an admin user, run**
-
-   ```bash
-   python manage.py migrate
-   python manage.py createsuperuser
-   python manage.py runserver
-   ```
-
-   - API: <http://127.0.0.1:8000/api/>
-   - Django admin: <http://127.0.0.1:8000/admin/>
-   - Swagger UI: <http://127.0.0.1:8000/swagger/>
-
-## Settings and environment variables
+## Settings and environment
 
 | Module | Used by | Notes |
 |---|---|---|
-| `voting_platform.settings.dev` | `manage.py` | local defaults, `DEBUG=True` |
-| `voting_platform.settings.prod` | `wsgi.py`, `asgi.py` | no insecure defaults; HTTPS/HSTS, secure cookies, WhiteNoise, stdout logging |
-| `voting_platform.settings.test` | pytest | dev settings + fast hasher + in-memory email |
+| `voting_platform.settings.dev` | `manage.py` | local defaults, `DEBUG=True`, console SMS, dummy CAPTCHA |
+| `voting_platform.settings.prod` | `wsgi.py`, `asgi.py` | no insecure defaults; **refuses to start** without a shared cache, real SMS and CAPTCHA credentials, hosts, secret key |
+| `voting_platform.settings.test` | pytest | in-memory SMS, high rate limits |
 
-Override with `DJANGO_SETTINGS_MODULE`. Real environment variables take
-precedence over `.env`. **Every variable is documented in
-[`.env.example`](backend/voting_platform/.env.example).** Required in
-production (no defaults): `SECRET_KEY`, `ALLOWED_HOSTS`, `FRONTEND_URL`, and
-either `DATABASE_URL` or `DB_NAME`/`DB_USER`/`DB_PASSWORD`/`DB_HOST`.
-Also set `CORS_ALLOWED_ORIGINS`, `CSRF_TRUSTED_ORIGINS` and the `EMAIL_*`
-values for real deployments.
-
-The production settings assume a TLS-terminating reverse proxy that sends
-`X-Forwarded-Proto: https`. Collect static files with
-`python manage.py collectstatic --noinput`.
+Every variable is documented in [`.env.example`](backend/voting_platform/.env.example). Production needs
+at least `SECRET_KEY`, `ALLOWED_HOSTS`, `FRONTEND_URL`, database settings, `CACHE_URL` (Redis),
+`AFRICASTALKING_*`, `TURNSTILE_SECRET_KEY` and `TRUSTED_PROXIES`. Production assumes a TLS-terminating
+proxy that sends `X-Forwarded-Proto` and overwrites `X-Forwarded-For`. Media files are stored on local
+disk for now (S3-compatible storage is part of the deployment phase).
 
 ## Tests, linting and checks
 
 ```bash
-pytest                                   # smoke tests (needs Postgres, see above)
-ruff check .                             # lint
-ruff format --check .                    # formatting (use `ruff format .` to fix)
+pytest                                # 559 tests, coverage reported (fails under 90%)
+ruff check . && ruff format --check .
 python manage.py check
 python manage.py makemigrations --check --dry-run
-pip-audit                                # dependency vulnerabilities
+python manage.py spectacular --file /tmp/schema.yml --validate --fail-on-warn
+pip-audit
 ```
 
-Deployment check (uses dummy values, prod settings):
+Tests need PostgreSQL (`DB_*` variables; see Local setup). They include real multi-threaded
+double-vote races, time-frozen voting-window boundaries, an endpoint × role permission matrix, and
+subprocess checks that the production settings refuse insecure configurations.
+
+Production deployment check (dummy values):
 
 ```bash
-DJANGO_SETTINGS_MODULE=voting_platform.settings.prod \
-SECRET_KEY="$(python -c 'from django.core.management.utils import get_random_secret_key as k; print(k())')" \
-ALLOWED_HOSTS=vote.example.com FRONTEND_URL=https://vote.example.com \
+DJANGO_SETTINGS_MODULE=voting_platform.settings.prod SECRET_KEY=... ALLOWED_HOSTS=vote.example.com \
+FRONTEND_URL=https://vote.example.com CACHE_URL=redis://localhost:6379/1 \
+AFRICASTALKING_USERNAME=x AFRICASTALKING_API_KEY=x TURNSTILE_SECRET_KEY=x \
+DB_NAME=x DB_USER=x DB_PASSWORD=x DB_HOST=localhost \
 python manage.py check --deploy --fail-level WARNING
 ```
 
-The same steps run in GitHub Actions (`.github/workflows/ci.yml`) on every
-push and pull request.
+The same steps run in GitHub Actions (`.github/workflows/ci.yml`) on every push and pull request.
 
 ## Working with Git branches
 
 1. Create a branch: `git checkout -b your-branch-name`
 2. Keep it up to date: `git pull --rebase origin main`
 3. Commit small, logical changes: `git add -p && git commit`
-4. Push the branch and open a pull request on GitHub; CI must pass before merging.
+4. Push the branch and open a pull request; CI must pass before merging.

@@ -67,18 +67,28 @@ jobs:
       - name: Django deployment check (prod settings, dummy env)
         env:
           DJANGO_SETTINGS_MODULE: voting_platform.settings.prod
-          # Throwaway values used only to satisfy required settings.
+          # Throwaway values used only to satisfy the required production settings.
           SECRET_KEY: ci-only-dummy-key-7Qm4vBpZ2rLk9tWc8Yn3Ds6HgJf0aEu1oIiXyVbN5MqTzR
           ALLOWED_HOSTS: vote.example.com
           FRONTEND_URL: https://vote.example.com
           CORS_ALLOWED_ORIGINS: https://vote.example.com
           CSRF_TRUSTED_ORIGINS: https://vote.example.com
+          CACHE_URL: redis://localhost:6379/1
+          AFRICASTALKING_USERNAME: ci-dummy
+          AFRICASTALKING_API_KEY: ci-dummy
+          TURNSTILE_SECRET_KEY: ci-dummy
         run: python manage.py check --deploy --fail-level WARNING
 
       - name: Check for missing migrations
         run: python manage.py makemigrations --check --dry-run
 
-      - name: Tests
+      - name: OpenAPI schema is valid and up to date
+        run: |
+          python manage.py spectacular --file /tmp/schema.yml --validate --fail-on-warn
+          diff --strip-trailing-cr schema.yml /tmp/schema.yml \
+            || (echo "schema.yml is stale: run 'python manage.py spectacular --file schema.yml' and commit it" && exit 1)
+
+      - name: Tests (with coverage)
         run: pytest
 
       - name: Dependency audit (pip-audit)

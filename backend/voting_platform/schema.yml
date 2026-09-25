@@ -1,0 +1,2894 @@
+openapi: 3.0.3
+info:
+  title: KW Awards Voting Platform API
+  version: 1.0.0
+  description: Public read endpoints, phone-verified voting and staff administration
+    for the KW Awards. Staff authenticate with a JWT (`/api/v1/auth/token/`); voters
+    with a short-lived voter token issued by `/api/v1/voters/otp/verify/`.
+paths:
+  /api/v1/audit-logs/:
+    get:
+      operationId: audit_logs_list
+      description: Read-only audit trail for dispute resolution (event admins). Entries
+        cannot be changed.
+      parameters:
+      - in: query
+        name: action
+        schema:
+          type: string
+          enum:
+          - event.status_changed
+          - nomination.approved
+          - nomination.rejected
+          - nomination.submitted
+          - otp.failed
+          - otp.requested
+          - otp.verified
+          - permission.denied
+          - staff.login
+          - staff.login_failed
+          - vote.cast
+          - vote.duplicate
+          - vote.voided
+        description: |-
+          * `nomination.submitted` - Nomination submitted
+          * `nomination.approved` - Nomination approved
+          * `nomination.rejected` - Nomination rejected
+          * `vote.cast` - Vote cast
+          * `vote.duplicate` - Duplicate vote rejected
+          * `vote.voided` - Vote voided
+          * `otp.requested` - OTP requested
+          * `otp.verified` - OTP verified
+          * `otp.failed` - OTP verification failed
+          * `event.status_changed` - Event status changed
+          * `staff.login` - Staff login
+          * `staff.login_failed` - Staff login failed
+          * `permission.denied` - Permission denied
+      - in: query
+        name: actor_user
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: actor_voter
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: created_after
+        schema:
+          type: string
+          format: date-time
+      - in: query
+        name: created_before
+        schema:
+          type: string
+          format: date-time
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: target_id
+        schema:
+          type: string
+      - in: query
+        name: target_type
+        schema:
+          type: string
+      tags:
+      - audit-logs
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAuditLogList'
+          description: ''
+  /api/v1/audit-logs/{id}/:
+    get:
+      operationId: audit_logs_retrieve
+      description: Read-only audit trail for dispute resolution (event admins). Entries
+        cannot be changed.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this audit log.
+        required: true
+      tags:
+      - audit-logs
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AuditLog'
+          description: ''
+  /api/v1/auth/logout/:
+    post:
+      operationId: auth_logout_create
+      description: Blacklist the caller's refresh token.
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/LogoutRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/auth/me/:
+    get:
+      operationId: auth_me_retrieve
+      description: The authenticated staff member and their roles.
+      tags:
+      - auth
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Me'
+          description: ''
+  /api/v1/auth/refresh/:
+    post:
+      operationId: auth_refresh_create
+      description: Exchange a refresh token for a new access token (refresh tokens
+        rotate).
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/TokenRefreshRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/TokenRefresh'
+          description: ''
+  /api/v1/auth/token/:
+    post:
+      operationId: auth_token_create
+      description: 'Staff login. There is no public signup: accounts are created by
+        an administrator.'
+      tags:
+      - auth
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/StaffTokenObtainPairRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/StaffTokenObtainPairRequest'
+        required: true
+      responses:
+        '200':
+          description: No response body
+  /api/v1/awards/:
+    get:
+      operationId: awards_list
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: query
+        name: category
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: event
+        schema:
+          type: string
+      - in: query
+        name: is_active
+        schema:
+          type: boolean
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - awards
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedAwardList'
+          description: ''
+    post:
+      operationId: awards_create
+      description: Public read (non-draft events only), event-admin write.
+      tags:
+      - awards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AwardRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Award'
+          description: ''
+  /api/v1/awards/{award_id}/nominations/:
+    get:
+      operationId: awards_nominations_list
+      description: Approved nominations for one award (public).
+      parameters:
+      - in: path
+        name: award_id
+        schema:
+          type: string
+          format: uuid
+        required: true
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - awards
+      security:
+      - staffAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPublicNominationList'
+          description: ''
+  /api/v1/awards/{id}/:
+    get:
+      operationId: awards_retrieve
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this award.
+        required: true
+      tags:
+      - awards
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Award'
+          description: ''
+    put:
+      operationId: awards_update
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this award.
+        required: true
+      tags:
+      - awards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/AwardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/AwardRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Award'
+          description: ''
+    patch:
+      operationId: awards_partial_update
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this award.
+        required: true
+      tags:
+      - awards
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedAwardRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedAwardRequest'
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Award'
+          description: ''
+    delete:
+      operationId: awards_destroy
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this award.
+        required: true
+      tags:
+      - awards
+      security:
+      - staffAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/categories/:
+    get:
+      operationId: categories_list
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: query
+        name: event
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - categories
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedCategoryList'
+          description: ''
+    post:
+      operationId: categories_create
+      description: Public read (non-draft events only), event-admin write.
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+  /api/v1/categories/{id}/:
+    get:
+      operationId: categories_retrieve
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    put:
+      operationId: categories_update
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/CategoryRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    patch:
+      operationId: categories_partial_update
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this category.
+        required: true
+      tags:
+      - categories
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedCategoryRequest'
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Category'
+          description: ''
+    delete:
+      operationId: categories_destroy
+      description: Public read (non-draft events only), event-admin write.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this category.
+        required: true
+      tags:
+      - categories
+      security:
+      - staffAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/events/:
+    get:
+      operationId: events_list
+      description: Events with their categories and awards. Drafts are visible to
+        event admins only.
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - closed
+          - draft
+          - nominations_open
+          - results_published
+          - voting_open
+        description: |-
+          * `draft` - Draft
+          * `nominations_open` - Nominations open
+          * `voting_open` - Voting open
+          * `closed` - Closed
+          * `results_published` - Results published
+      - in: query
+        name: year
+        schema:
+          type: integer
+      tags:
+      - events
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedEventList'
+          description: ''
+    post:
+      operationId: events_create
+      description: Events with their categories and awards. Drafts are visible to
+        event admins only.
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+  /api/v1/events/{slug}/:
+    get:
+      operationId: events_retrieve
+      description: Events with their categories and awards. Drafts are visible to
+        event admins only.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+    put:
+      operationId: events_update
+      description: Events with their categories and awards. Drafts are visible to
+        event admins only.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/EventRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+    patch:
+      operationId: events_partial_update
+      description: Events with their categories and awards. Drafts are visible to
+        event admins only.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/PatchedEventRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/PatchedEventRequest'
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+    delete:
+      operationId: events_destroy
+      description: Events with their categories and awards. Drafts are visible to
+        event admins only.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      security:
+      - staffAuth: []
+      responses:
+        '204':
+          description: No response body
+  /api/v1/events/{slug}/results/:
+    get:
+      operationId: events_results_retrieve
+      description: |-
+        Ranked results. Public only once the event's results are published (404 before);
+        event admins can read them at any time.
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Results'
+          description: ''
+  /api/v1/events/{slug}/set-status/:
+    post:
+      operationId: events_set_status_create
+      description: Change the event's status (validated transitions; audited).
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/SetStatusRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/SetStatusRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Event'
+          description: ''
+  /api/v1/events/{slug}/stats/:
+    get:
+      operationId: events_stats_retrieve
+      description: 'Dashboard numbers: totals, votes over time, per-category counts
+        (event admins).'
+      parameters:
+      - in: path
+        name: slug
+        schema:
+          type: string
+        required: true
+      tags:
+      - events
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Stats'
+          description: ''
+  /api/v1/nominations/:
+    get:
+      operationId: nominations_list
+      description: 'Public: submit a nomination and browse approved ones. Moderators:
+        review queue.'
+      parameters:
+      - in: query
+        name: award
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: category
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: event
+        schema:
+          type: string
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: status
+        schema:
+          type: string
+          enum:
+          - approved
+          - pending
+          - rejected
+          - withdrawn
+        description: |-
+          * `pending` - Pending
+          * `approved` - Approved
+          * `rejected` - Rejected
+          * `withdrawn` - Withdrawn
+      tags:
+      - nominations
+      security:
+      - staffAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedPublicNominationList'
+          description: ''
+    post:
+      operationId: nominations_create
+      description: Submit a nomination (multipart, CAPTCHA-protected). It stays hidden
+        until approved.
+      tags:
+      - nominations
+      requestBody:
+        content:
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/NominationSubmitRequest'
+        required: true
+      security:
+      - staffAuth: []
+      - {}
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/SubmissionResult'
+          description: ''
+  /api/v1/nominations/{id}/:
+    get:
+      operationId: nominations_retrieve
+      description: 'Public: submit a nomination and browse approved ones. Moderators:
+        review queue.'
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this nomination.
+        required: true
+      tags:
+      - nominations
+      security:
+      - staffAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PublicNomination'
+          description: ''
+  /api/v1/nominations/{id}/approve/:
+    post:
+      operationId: nominations_approve_create
+      description: Approve a pending nomination (moderators).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this nomination.
+        required: true
+      tags:
+      - nominations
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffNomination'
+          description: ''
+  /api/v1/nominations/{id}/reject/:
+    post:
+      operationId: nominations_reject_create
+      description: Reject a pending nomination with a reason (moderators).
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this nomination.
+        required: true
+      tags:
+      - nominations
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/RejectRequest'
+        required: true
+      security:
+      - staffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffNomination'
+          description: ''
+  /api/v1/nominees/{id}/:
+    get:
+      operationId: nominees_retrieve
+      description: Public nominee profile with their approved nominations only.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this nominee.
+        required: true
+      tags:
+      - nominees
+      security:
+      - staffAuth: []
+      - {}
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/NomineeProfile'
+          description: ''
+  /api/v1/voters/otp/request/:
+    post:
+      operationId: voters_otp_request_create
+      description: Ask for an SMS code. The response is identical whether or not the
+        number is known.
+      tags:
+      - voters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPRequestRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OTPRequestRequest'
+        required: true
+      responses:
+        '202':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/Detail'
+          description: ''
+  /api/v1/voters/otp/verify/:
+    post:
+      operationId: voters_otp_verify_create
+      description: Exchange the SMS code for a short-lived voter token.
+      tags:
+      - voters
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/OTPVerifyRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/OTPVerifyRequest'
+        required: true
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoterToken'
+          description: ''
+  /api/v1/votes/:
+    get:
+      operationId: votes_list
+      description: |-
+        Voters cast votes here; event admins review and void them.
+
+        One URL serves both audiences, so authentication accepts either token type and each action
+        names the permission it needs: ``create`` and ``mine`` need a *voter* token, everything else
+        needs the *EventAdmin* role.
+      parameters:
+      - in: query
+        name: award
+        schema:
+          type: string
+          format: uuid
+      - in: query
+        name: event
+        schema:
+          type: string
+      - in: query
+        name: nomination
+        schema:
+          type: string
+          format: uuid
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - in: query
+        name: phone
+        schema:
+          type: string
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      - in: query
+        name: source
+        schema:
+          type: string
+          enum:
+          - free
+          - paid
+        description: |-
+          * `free` - Free
+          * `paid` - Paid
+      - in: query
+        name: voided
+        schema:
+          type: boolean
+      tags:
+      - votes
+      security:
+      - voterOrStaffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedStaffVoteList'
+          description: ''
+    post:
+      operationId: votes_create
+      description: Cast a free vote for a nomination (one per award; 409 if you already
+        voted).
+      tags:
+      - votes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoteCastRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoteCastRequest'
+        required: true
+      security:
+      - voterOrStaffAuth: []
+      responses:
+        '201':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/VoteReceipt'
+          description: ''
+  /api/v1/votes/{id}/:
+    get:
+      operationId: votes_retrieve
+      description: |-
+        Voters cast votes here; event admins review and void them.
+
+        One URL serves both audiences, so authentication accepts either token type and each action
+        names the permission it needs: ``create`` and ``mine`` need a *voter* token, everything else
+        needs the *EventAdmin* role.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this vote.
+        required: true
+      tags:
+      - votes
+      security:
+      - voterOrStaffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffVote'
+          description: ''
+  /api/v1/votes/{id}/void/:
+    post:
+      operationId: votes_void_create
+      description: Exclude a vote from all tallies (event admins). The row is kept.
+      parameters:
+      - in: path
+        name: id
+        schema:
+          type: string
+          format: uuid
+        description: A UUID string identifying this vote.
+        required: true
+      tags:
+      - votes
+      requestBody:
+        content:
+          application/json:
+            schema:
+              $ref: '#/components/schemas/VoidRequest'
+          multipart/form-data:
+            schema:
+              $ref: '#/components/schemas/VoidRequest'
+        required: true
+      security:
+      - voterOrStaffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/StaffVote'
+          description: ''
+  /api/v1/votes/mine/:
+    get:
+      operationId: votes_mine_list
+      description: Which awards the authenticated voter has voted in (no tallies).
+      parameters:
+      - name: ordering
+        required: false
+        in: query
+        description: Which field to use when ordering the results.
+        schema:
+          type: string
+      - name: page
+        required: false
+        in: query
+        description: A page number within the paginated result set.
+        schema:
+          type: integer
+      - name: search
+        required: false
+        in: query
+        description: A search term.
+        schema:
+          type: string
+      tags:
+      - votes
+      security:
+      - voterOrStaffAuth: []
+      responses:
+        '200':
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/PaginatedMyVoteList'
+          description: ''
+components:
+  schemas:
+    AuditActionEnum:
+      enum:
+      - nomination.submitted
+      - nomination.approved
+      - nomination.rejected
+      - vote.cast
+      - vote.duplicate
+      - vote.voided
+      - otp.requested
+      - otp.verified
+      - otp.failed
+      - event.status_changed
+      - staff.login
+      - staff.login_failed
+      - permission.denied
+      type: string
+      description: |-
+        * `nomination.submitted` - Nomination submitted
+        * `nomination.approved` - Nomination approved
+        * `nomination.rejected` - Nomination rejected
+        * `vote.cast` - Vote cast
+        * `vote.duplicate` - Duplicate vote rejected
+        * `vote.voided` - Vote voided
+        * `otp.requested` - OTP requested
+        * `otp.verified` - OTP verified
+        * `otp.failed` - OTP verification failed
+        * `event.status_changed` - Event status changed
+        * `staff.login` - Staff login
+        * `staff.login_failed` - Staff login failed
+        * `permission.denied` - Permission denied
+    AuditLog:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        action:
+          allOf:
+          - $ref: '#/components/schemas/AuditActionEnum'
+          readOnly: true
+        actor_user:
+          type: string
+          format: email
+          readOnly: true
+        actor_voter:
+          type: string
+          readOnly: true
+        target_type:
+          type: string
+          readOnly: true
+        target_id:
+          type: string
+          readOnly: true
+        metadata:
+          readOnly: true
+        ip_address:
+          type: string
+          readOnly: true
+          nullable: true
+        user_agent:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - action
+      - actor_user
+      - actor_voter
+      - created_at
+      - id
+      - ip_address
+      - metadata
+      - target_id
+      - target_type
+      - user_agent
+    Award:
+      type: object
+      description: |-
+        Store selected string fields as plain text (tags and control characters removed).
+
+        List field names in ``plain_text_fields`` (single line) and ``multiline_fields``
+        (newlines kept). A required field that becomes empty after cleaning is rejected.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        category:
+          type: string
+          format: uuid
+        event:
+          type: string
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 1000
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        is_active:
+          type: boolean
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - category
+      - created_at
+      - event
+      - id
+      - name
+      - slug
+      - updated_at
+    AwardRef:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        category:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        event:
+          type: string
+          readOnly: true
+      required:
+      - category
+      - event
+      - id
+      - name
+      - slug
+    AwardRequest:
+      type: object
+      description: |-
+        Store selected string fields as plain text (tags and control characters removed).
+
+        List field names in ``plain_text_fields`` (single line) and ``multiline_fields``
+        (newlines kept). A required field that becomes empty after cleaning is rejected.
+      properties:
+        category:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 1000
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        is_active:
+          type: boolean
+      required:
+      - category
+      - name
+      - slug
+    Category:
+      type: object
+      description: 'Adds ``awards`` to a category: active ones only unless the viewer
+        is an event admin.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        event:
+          type: string
+          format: uuid
+        name:
+          type: string
+          maxLength: 120
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 1000
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/NestedAward'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - awards
+      - created_at
+      - event
+      - id
+      - name
+      - slug
+      - updated_at
+    CategoryRequest:
+      type: object
+      description: 'Adds ``awards`` to a category: active ones only unless the viewer
+        is an event admin.'
+      properties:
+        event:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 1000
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+      required:
+      - event
+      - name
+      - slug
+    Detail:
+      type: object
+      properties:
+        detail:
+          type: string
+      required:
+      - detail
+    Event:
+      type: object
+      description: Events. ``status`` is read-only here; change it with ``POST .../set-status/``.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          maxLength: 150
+        slug:
+          type: string
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        year:
+          type: integer
+          maximum: 2100
+          minimum: 2000
+        status:
+          allOf:
+          - $ref: '#/components/schemas/EventStatusEnum'
+          readOnly: true
+        nominations_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        nominations_close_at:
+          type: string
+          format: date-time
+          nullable: true
+        voting_opens_at:
+          type: string
+          format: date-time
+          nullable: true
+        voting_closes_at:
+          type: string
+          format: date-time
+          nullable: true
+        results_published_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voting_is_open:
+          type: boolean
+          readOnly: true
+        nominations_are_open:
+          type: boolean
+          readOnly: true
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/NestedCategory'
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - categories
+      - created_at
+      - id
+      - name
+      - nominations_are_open
+      - results_published_at
+      - slug
+      - status
+      - updated_at
+      - voting_is_open
+      - year
+    EventRequest:
+      type: object
+      description: Events. ``status`` is read-only here; change it with ``POST .../set-status/``.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        year:
+          type: integer
+          maximum: 2100
+          minimum: 2000
+        nominations_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        nominations_close_at:
+          type: string
+          format: date-time
+          nullable: true
+        voting_opens_at:
+          type: string
+          format: date-time
+          nullable: true
+        voting_closes_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - name
+      - slug
+      - year
+    EventStatusEnum:
+      enum:
+      - draft
+      - nominations_open
+      - voting_open
+      - closed
+      - results_published
+      type: string
+      description: |-
+        * `draft` - Draft
+        * `nominations_open` - Nominations open
+        * `voting_open` - Voting open
+        * `closed` - Closed
+        * `results_published` - Results published
+    LogoutRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - refresh
+    Me:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        email:
+          type: string
+          format: email
+          readOnly: true
+        full_name:
+          type: string
+          readOnly: true
+        is_staff:
+          type: boolean
+          readOnly: true
+        is_superuser:
+          type: boolean
+          readOnly: true
+          title: Superuser status
+          description: Designates that this user has all permissions without explicitly
+            assigning them.
+        roles:
+          type: array
+          items:
+            type: string
+          readOnly: true
+      required:
+      - email
+      - full_name
+      - id
+      - is_staff
+      - is_superuser
+      - roles
+    MyVote:
+      type: object
+      description: 'A voter''s own vote: which award and nominee, never any tallies.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        award:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        nomination:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        voided:
+          type: boolean
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - award
+      - created_at
+      - id
+      - nomination
+      - voided
+    NestedAward:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          readOnly: true
+        display_order:
+          type: integer
+          readOnly: true
+        is_active:
+          type: boolean
+          readOnly: true
+      required:
+      - description
+      - display_order
+      - id
+      - is_active
+      - name
+      - slug
+    NestedCategory:
+      type: object
+      description: 'Adds ``awards`` to a category: active ones only unless the viewer
+        is an event admin.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        slug:
+          type: string
+          readOnly: true
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          readOnly: true
+        display_order:
+          type: integer
+          readOnly: true
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/NestedAward'
+          readOnly: true
+      required:
+      - awards
+      - description
+      - display_order
+      - id
+      - name
+      - slug
+    NominationStatusEnum:
+      enum:
+      - pending
+      - approved
+      - rejected
+      - withdrawn
+      type: string
+      description: |-
+        * `pending` - Pending
+        * `approved` - Approved
+        * `rejected` - Rejected
+        * `withdrawn` - Withdrawn
+    NominationSubmitRequest:
+      type: object
+      description: Public nomination form (multipart). Creates a Nominee and a *pending*
+        Nomination.
+      properties:
+        award:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        stage_name:
+          type: string
+          maxLength: 120
+        bio:
+          type: string
+          maxLength: 2000
+        photo:
+          type: string
+          format: binary
+        website_url:
+          nullable: true
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        instagram_url:
+          nullable: true
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        facebook_url:
+          nullable: true
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        x_url:
+          nullable: true
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        youtube_url:
+          nullable: true
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        tiktok_url:
+          nullable: true
+          oneOf:
+          - type: string
+            format: uri
+            maxLength: 300
+          - type: string
+            maxLength: 0
+        contact_phone:
+          type: string
+          maxLength: 32
+        contact_email:
+          oneOf:
+          - type: string
+            format: email
+            maxLength: 254
+          - type: string
+            maxLength: 0
+        captcha_token:
+          type: string
+          writeOnly: true
+          maxLength: 2048
+      required:
+      - award
+      - name
+      - photo
+    NomineeNomination:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        award:
+          allOf:
+          - $ref: '#/components/schemas/AwardRef'
+          readOnly: true
+      required:
+      - award
+      - id
+    NomineeProfile:
+      type: object
+      description: Public nominee data only. Contact details and owner are never included.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        stage_name:
+          type: string
+          readOnly: true
+        bio:
+          type: string
+          readOnly: true
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+        website_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        instagram_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        facebook_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        x_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        youtube_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        tiktok_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        nominations:
+          type: array
+          items:
+            $ref: '#/components/schemas/NomineeNomination'
+          readOnly: true
+      required:
+      - bio
+      - facebook_url
+      - id
+      - instagram_url
+      - name
+      - nominations
+      - photo
+      - stage_name
+      - tiktok_url
+      - website_url
+      - x_url
+      - youtube_url
+    OTPRequestRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 32
+        captcha_token:
+          type: string
+          maxLength: 2048
+      required:
+      - phone
+    OTPVerifyRequest:
+      type: object
+      properties:
+        phone:
+          type: string
+          minLength: 1
+          maxLength: 32
+        code:
+          type: string
+          minLength: 6
+          maxLength: 6
+          pattern: ^\d+$
+      required:
+      - code
+      - phone
+    PaginatedAuditLogList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/AuditLog'
+    PaginatedAwardList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Award'
+    PaginatedCategoryList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Category'
+    PaginatedEventList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/Event'
+    PaginatedMyVoteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/MyVote'
+    PaginatedPublicNominationList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/PublicNomination'
+    PaginatedStaffVoteList:
+      type: object
+      required:
+      - count
+      - results
+      properties:
+        count:
+          type: integer
+          example: 123
+        next:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=4
+        previous:
+          type: string
+          nullable: true
+          format: uri
+          example: http://api.example.org/accounts/?page=2
+        results:
+          type: array
+          items:
+            $ref: '#/components/schemas/StaffVote'
+    PatchedAwardRequest:
+      type: object
+      description: |-
+        Store selected string fields as plain text (tags and control characters removed).
+
+        List field names in ``plain_text_fields`` (single line) and ``multiline_fields``
+        (newlines kept). A required field that becomes empty after cleaning is rejected.
+      properties:
+        category:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 1000
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+        is_active:
+          type: boolean
+    PatchedCategoryRequest:
+      type: object
+      description: 'Adds ``awards`` to a category: active ones only unless the viewer
+        is an event admin.'
+      properties:
+        event:
+          type: string
+          format: uuid
+        name:
+          type: string
+          minLength: 1
+          maxLength: 120
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        description:
+          type: string
+          maxLength: 1000
+        display_order:
+          type: integer
+          maximum: 32767
+          minimum: 0
+    PatchedEventRequest:
+      type: object
+      description: Events. ``status`` is read-only here; change it with ``POST .../set-status/``.
+      properties:
+        name:
+          type: string
+          minLength: 1
+          maxLength: 150
+        slug:
+          type: string
+          minLength: 1
+          maxLength: 80
+          pattern: ^[-a-zA-Z0-9_]+$
+        year:
+          type: integer
+          maximum: 2100
+          minimum: 2000
+        nominations_open_at:
+          type: string
+          format: date-time
+          nullable: true
+        nominations_close_at:
+          type: string
+          format: date-time
+          nullable: true
+        voting_opens_at:
+          type: string
+          format: date-time
+          nullable: true
+        voting_closes_at:
+          type: string
+          format: date-time
+          nullable: true
+    PublicNomination:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        award:
+          allOf:
+          - $ref: '#/components/schemas/AwardRef'
+          readOnly: true
+        nominee:
+          allOf:
+          - $ref: '#/components/schemas/PublicNominee'
+          readOnly: true
+      required:
+      - award
+      - id
+      - nominee
+    PublicNominee:
+      type: object
+      description: Public nominee data only. Contact details and owner are never included.
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        stage_name:
+          type: string
+          readOnly: true
+        bio:
+          type: string
+          readOnly: true
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+        website_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        instagram_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        facebook_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        x_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        youtube_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        tiktok_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+      required:
+      - bio
+      - facebook_url
+      - id
+      - instagram_url
+      - name
+      - photo
+      - stage_name
+      - tiktok_url
+      - website_url
+      - x_url
+      - youtube_url
+    RejectRequest:
+      type: object
+      description: |-
+        Store selected string fields as plain text (tags and control characters removed).
+
+        List field names in ``plain_text_fields`` (single line) and ``multiline_fields``
+        (newlines kept). A required field that becomes empty after cleaning is rejected.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - reason
+    ResultAward:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        total_votes:
+          type: integer
+        nominations:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultEntry'
+      required:
+      - id
+      - name
+      - nominations
+      - slug
+      - total_votes
+    ResultCategory:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        slug:
+          type: string
+        awards:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultAward'
+      required:
+      - awards
+      - id
+      - name
+      - slug
+    ResultEntry:
+      type: object
+      properties:
+        nomination_id:
+          type: string
+          format: uuid
+        nominee:
+          $ref: '#/components/schemas/ResultNominee'
+        votes:
+          type: integer
+        rank:
+          type: integer
+      required:
+      - nomination_id
+      - nominee
+      - rank
+      - votes
+    ResultEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        year:
+          type: integer
+        status:
+          type: string
+        results_published_at:
+          type: string
+          format: date-time
+          nullable: true
+      required:
+      - id
+      - name
+      - results_published_at
+      - slug
+      - status
+      - year
+    ResultNominee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        name:
+          type: string
+        stage_name:
+          type: string
+        photo:
+          type: string
+          nullable: true
+      required:
+      - id
+      - name
+      - photo
+      - stage_name
+    Results:
+      type: object
+      properties:
+        event:
+          $ref: '#/components/schemas/ResultEvent'
+        generated_at:
+          type: string
+          format: date-time
+        categories:
+          type: array
+          items:
+            $ref: '#/components/schemas/ResultCategory'
+      required:
+      - categories
+      - event
+      - generated_at
+    SetStatusRequest:
+      type: object
+      properties:
+        status:
+          $ref: '#/components/schemas/EventStatusEnum'
+      required:
+      - status
+    SourceEnum:
+      enum:
+      - free
+      - paid
+      type: string
+      description: |-
+        * `free` - Free
+        * `paid` - Paid
+    StaffNomination:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/NominationStatusEnum'
+          readOnly: true
+        award:
+          allOf:
+          - $ref: '#/components/schemas/AwardRef'
+          readOnly: true
+        nominee:
+          allOf:
+          - $ref: '#/components/schemas/StaffNominee'
+          readOnly: true
+        submitted_by_ip:
+          type: string
+          readOnly: true
+          nullable: true
+        reviewed_by:
+          type: string
+          format: email
+          readOnly: true
+        reviewed_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        rejection_reason:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        updated_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - award
+      - created_at
+      - id
+      - nominee
+      - rejection_reason
+      - reviewed_at
+      - reviewed_by
+      - status
+      - submitted_by_ip
+      - updated_at
+    StaffNominee:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        name:
+          type: string
+          readOnly: true
+        stage_name:
+          type: string
+          readOnly: true
+        bio:
+          type: string
+          readOnly: true
+        photo:
+          type: string
+          format: uri
+          nullable: true
+          readOnly: true
+        website_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        instagram_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        facebook_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        x_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        youtube_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        tiktok_url:
+          type: string
+          format: uri
+          readOnly: true
+          nullable: true
+        contact_phone:
+          type: string
+          readOnly: true
+        contact_email:
+          type: string
+          format: email
+          readOnly: true
+        owner:
+          type: string
+          format: uuid
+          readOnly: true
+          nullable: true
+          description: Reserved for future nominee accounts.
+      required:
+      - bio
+      - contact_email
+      - contact_phone
+      - facebook_url
+      - id
+      - instagram_url
+      - name
+      - owner
+      - photo
+      - stage_name
+      - tiktok_url
+      - website_url
+      - x_url
+      - youtube_url
+    StaffTokenObtainPairRequest:
+      type: object
+      description: Email + password -> access/refresh pair. Staff only; every attempt
+        is audited.
+      properties:
+        email:
+          type: string
+          writeOnly: true
+          minLength: 1
+        password:
+          type: string
+          writeOnly: true
+          minLength: 1
+      required:
+      - email
+      - password
+    StaffVote:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        event:
+          type: string
+          readOnly: true
+        award:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        nomination:
+          type: object
+          additionalProperties: {}
+          readOnly: true
+        voter_phone:
+          type: string
+          readOnly: true
+        source:
+          allOf:
+          - $ref: '#/components/schemas/SourceEnum'
+          readOnly: true
+        quantity:
+          type: integer
+          readOnly: true
+        ip_address:
+          type: string
+          readOnly: true
+          nullable: true
+        user_agent:
+          type: string
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+        voided_at:
+          type: string
+          format: date-time
+          readOnly: true
+          nullable: true
+        voided_by:
+          type: string
+          format: email
+          readOnly: true
+        void_reason:
+          type: string
+          readOnly: true
+      required:
+      - award
+      - created_at
+      - event
+      - id
+      - ip_address
+      - nomination
+      - quantity
+      - source
+      - user_agent
+      - void_reason
+      - voided_at
+      - voided_by
+      - voter_phone
+    Stats:
+      type: object
+      properties:
+        event:
+          $ref: '#/components/schemas/StatsEvent'
+        totals:
+          $ref: '#/components/schemas/StatsTotals'
+        votes_over_time:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsDay'
+        per_category:
+          type: array
+          items:
+            $ref: '#/components/schemas/StatsCategory'
+      required:
+      - event
+      - per_category
+      - totals
+      - votes_over_time
+    StatsCategory:
+      type: object
+      properties:
+        category_id:
+          type: string
+          format: uuid
+        category:
+          type: string
+        votes:
+          type: integer
+        voters:
+          type: integer
+      required:
+      - category
+      - category_id
+      - voters
+      - votes
+    StatsDay:
+      type: object
+      properties:
+        date:
+          type: string
+          format: date
+        votes:
+          type: integer
+      required:
+      - date
+      - votes
+    StatsEvent:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+        slug:
+          type: string
+        name:
+          type: string
+        status:
+          type: string
+      required:
+      - id
+      - name
+      - slug
+      - status
+    StatsTotals:
+      type: object
+      properties:
+        votes:
+          type: integer
+        voters:
+          type: integer
+        voided_votes:
+          type: integer
+        pending_nominations:
+          type: integer
+        approved_nominations:
+          type: integer
+      required:
+      - approved_nominations
+      - pending_nominations
+      - voided_votes
+      - voters
+      - votes
+    SubmissionResult:
+      type: object
+      description: 'What a submitter gets back: the public shape plus the (pending)
+        status.'
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        status:
+          allOf:
+          - $ref: '#/components/schemas/NominationStatusEnum'
+          readOnly: true
+        award:
+          allOf:
+          - $ref: '#/components/schemas/AwardRef'
+          readOnly: true
+        nominee:
+          allOf:
+          - $ref: '#/components/schemas/PublicNominee'
+          readOnly: true
+      required:
+      - award
+      - id
+      - nominee
+      - status
+    TokenRefresh:
+      type: object
+      properties:
+        access:
+          type: string
+          readOnly: true
+        refresh:
+          type: string
+      required:
+      - access
+      - refresh
+    TokenRefreshRequest:
+      type: object
+      properties:
+        refresh:
+          type: string
+          minLength: 1
+      required:
+      - refresh
+    VoidRequest:
+      type: object
+      description: |-
+        Store selected string fields as plain text (tags and control characters removed).
+
+        List field names in ``plain_text_fields`` (single line) and ``multiline_fields``
+        (newlines kept). A required field that becomes empty after cleaning is rejected.
+      properties:
+        reason:
+          type: string
+          minLength: 1
+          maxLength: 500
+      required:
+      - reason
+    VoteCastRequest:
+      type: object
+      description: Only the nomination is accepted. Award and event are derived server-side
+        (AUDIT F-08).
+      properties:
+        nomination_id:
+          type: string
+          format: uuid
+      required:
+      - nomination_id
+    VoteReceipt:
+      type: object
+      properties:
+        id:
+          type: string
+          format: uuid
+          readOnly: true
+        award:
+          type: string
+          format: uuid
+          readOnly: true
+        nomination:
+          type: string
+          format: uuid
+          readOnly: true
+        created_at:
+          type: string
+          format: date-time
+          readOnly: true
+      required:
+      - award
+      - created_at
+      - id
+      - nomination
+    VoterToken:
+      type: object
+      properties:
+        token:
+          type: string
+        token_type:
+          type: string
+        expires_in:
+          type: integer
+          description: Lifetime in seconds.
+      required:
+      - expires_in
+      - token
+      - token_type
+  securitySchemes:
+    staffAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: 'Staff access token from `POST /api/v1/auth/token/`. Send as `Authorization:
+        Bearer <access token>`. Voter tokens are not accepted.'
+    voterOrStaffAuth:
+      type: http
+      scheme: bearer
+      bearerFormat: JWT
+      description: '`POST /votes/` and `GET /votes/mine/` need a **voter token** (from
+        `/voters/otp/verify/`); listing, reading and voiding votes need a **staff
+        JWT** with the EventAdmin role.'

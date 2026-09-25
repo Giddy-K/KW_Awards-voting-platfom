@@ -2,7 +2,7 @@
 DJANGO_SETTINGS_MODULE = "voting_platform.settings.test"
 python_files = ["test_*.py"]
 testpaths = ["tests"]
-addopts = "-ra --strict-markers --strict-config"
+addopts = "-ra --strict-markers --strict-config --cov --cov-report=term-missing:skip-covered"
 
 [tool.ruff]
 line-length = 100
@@ -20,7 +20,16 @@ ignore = ["E501"]
 "voting_platform/settings/*.py" = ["F403", "F405", "E402"]
 
 [tool.ruff.lint.isort]
-known-first-party = ["api", "voting_platform"]
+known-first-party = ["accounts", "audit", "common", "events", "nominations", "payments", "voting", "voting_platform", "tests"]
 
 [tool.ruff.format]
 quote-style = "double"
+
+[tool.coverage.run]
+source = ["accounts", "audit", "common", "events", "nominations", "payments", "voting"]
+omit = ["*/migrations/*", "*/tests/*"]
+branch = true
+
+[tool.coverage.report]
+exclude_lines = ["pragma: no cover", "raise NotImplementedError", "if TYPE_CHECKING:"]
+fail_under = 90
