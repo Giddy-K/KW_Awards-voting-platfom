@@ -128,18 +128,18 @@ paths:
   /api/v1/auth/logout/:
     post:
       operationId: auth_logout_create
-      description: Blacklist the caller's refresh token.
+      description: Blacklist the caller's refresh token (read from the cookie) and
+        clear the cookie.
+      parameters:
+      - in: header
+        name: X-Requested-With
+        schema:
+          type: string
+        description: Must be exactly "XMLHttpRequest". A lightweight CSRF check for
+          this cookie-setting/reading endpoint; see HasAjaxHeader.
+        required: true
       tags:
       - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/LogoutRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/LogoutRequest'
-        required: true
       security:
       - staffAuth: []
       responses:
@@ -163,31 +163,46 @@ paths:
   /api/v1/auth/refresh/:
     post:
       operationId: auth_refresh_create
-      description: Exchange a refresh token for a new access token (refresh tokens
-        rotate).
+      description: |-
+        Exchange the refresh cookie for a new access token. Refresh tokens rotate.
+
+        The refresh token is read from the cookie set by login (never from the request body);
+        the response sets a new rotated cookie and returns only the access token.
+      parameters:
+      - in: header
+        name: X-Requested-With
+        schema:
+          type: string
+        description: Must be exactly "XMLHttpRequest". A lightweight CSRF check for
+          this cookie-setting/reading endpoint; see HasAjaxHeader.
+        required: true
       tags:
       - auth
-      requestBody:
-        content:
-          application/json:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-          multipart/form-data:
-            schema:
-              $ref: '#/components/schemas/TokenRefreshRequest'
-        required: true
+      security:
+      - {}
       responses:
         '200':
           content:
             application/json:
               schema:
-                $ref: '#/components/schemas/TokenRefresh'
+                $ref: '#/components/schemas/AccessToken'
           description: ''
   /api/v1/auth/token/:
     post:
       operationId: auth_token_create
-      description: 'Staff login. There is no public signup: accounts are created by
-        an administrator.'
+      description: |-
+        Staff login. There is no public signup: accounts are created by an administrator.
+
+        The refresh token is set as an HttpOnly cookie (never in the response body); only the
+        access token is returned.
+      parameters:
+      - in: header
+        name: X-Requested-With
+        schema:
+          type: string
+        description: Must be exactly "XMLHttpRequest". A lightweight CSRF check for
+          this cookie-setting/reading endpoint; see HasAjaxHeader.
+        required: true
       tags:
       - auth
       requestBody:
@@ -199,9 +214,15 @@ paths:
             schema:
               $ref: '#/components/schemas/StaffTokenObtainPairRequest'
         required: true
+      security:
+      - {}
       responses:
         '200':
-          description: No response body
+          content:
+            application/json:
+              schema:
+                $ref: '#/components/schemas/AccessToken'
+          description: ''
   /api/v1/awards/:
     get:
       operationId: awards_list
@@ -1254,6 +1275,16 @@ paths:
           description: ''
 components:
   schemas:
+    AccessToken:
+      type: object
+      description: 'What login/refresh return: the access token only. The refresh
+        token is a cookie.'
+      properties:
+        access:
+          type: string
+          readOnly: true
+      required:
+      - access
     AuditActionEnum:
       enum:
       - nomination.submitted
@@ -1650,15 +1681,6 @@ components:
         * `voting_open` - Voting open
         * `closed` - Closed
         * `results_published` - Results published
-    LogoutRequest:
-      type: object
-      properties:
-        refresh:
-          type: string
-          writeOnly: true
-          minLength: 1
-      required:
-      - refresh
     Me:
       type: object
       properties:
@@ -2797,25 +2819,6 @@ components:
       - id
       - nominee
       - status
-    TokenRefresh:
-      type: object
-      properties:
-        access:
-          type: string
-          readOnly: true
-        refresh:
-          type: string
-      required:
-      - access
-      - refresh
-    TokenRefreshRequest:
-      type: object
-      properties:
-        refresh:
-          type: string
-          minLength: 1
-      required:
-      - refresh
     VoidRequest:
       type: object
       description: |-
