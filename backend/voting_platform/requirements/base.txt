@@ -15,5 +15,5 @@ psycopg2-binary==2.9.13
 # Security floors for transitive dependencies that had advisories in the
 # previous pins (AUDIT F-14). Not exact pins; they only prevent regressions.
 urllib3>=2.7.0
-idna>=3.15
+idna>=3.20
 sqlparse>=0.6.0
