@@ -38,8 +38,7 @@ class _EventScopedViewSet(viewsets.ModelViewSet):
             instance.delete()
         except ProtectedError as exc:
             raise Conflict(
-                "This item cannot be deleted because votes already reference it.",
-                code="conflict",
+                "This item cannot be deleted because votes already reference it."
             ) from exc
 
 

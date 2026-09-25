@@ -9,10 +9,9 @@ from rest_framework.views import APIView
 
 from accounts.permissions import IsEventAdmin
 from common.captcha import verify_captcha
-from common.exceptions import ApiError, UnsupportedPhoneNumber
+from common.exceptions import CaptchaFailed, UnsupportedPhoneNumber
 from common.ip import get_client_ip
 from common.phone import InvalidPhoneNumber, normalize_phone, normalize_phone_strict
-from common.sms_budget import SmsBudgetExhausted
 
 from . import otp, services
 from .authentication import IsVoter, VoterOrStaffAuthentication, issue_voter_token
@@ -66,15 +65,11 @@ class OTPRequestView(APIView):
             raise UnsupportedPhoneNumber() from None
         token = serializer.validated_data.get("captcha_token", "")
         if not verify_captcha(token, get_client_ip(request)):
-            raise ApiError("CAPTCHA verification failed.", code="captcha_failed")
-        try:
-            otp.request_otp(phone, request=request)
-        except SmsBudgetExhausted as exc:
-            return Response(
-                {"detail": "SMS delivery is temporarily unavailable.", "code": "sms_unavailable"},
-                status=status.HTTP_503_SERVICE_UNAVAILABLE,
-                headers={"Retry-After": str(exc.retry_after)},
-            )
+            raise CaptchaFailed()
+        # SmsBudgetExhausted (common.sms_budget) is now an ApiError subclass, so it propagates
+        # and is turned into the 503 sms_unavailable response (with Retry-After) by the global
+        # exception handler -- no try/except needed here any more (Phase 2.3).
+        otp.request_otp(phone, request=request)
         return Response(OTP_REQUEST_RESPONSE, status=status.HTTP_202_ACCEPTED)
 
 

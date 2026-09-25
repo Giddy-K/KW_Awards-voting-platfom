@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from audit import services as audit
 from audit.models import AuditAction
-from common.exceptions import ApiError
+from common.exceptions import InvalidTransition, WindowRequired
 
 from .models import STATUS_TRANSITIONS, Event, EventStatus
 
@@ -19,21 +19,15 @@ def change_status(event, new_status, *, request=None):
         locked = Event.objects.select_for_update().get(pk=event.pk)
         old_status = locked.status
         if new_status not in STATUS_TRANSITIONS.get(EventStatus(old_status), set()):
-            raise ApiError(
-                f"Cannot change status from '{old_status}' to '{new_status}'.",
-                code="invalid_transition",
-                status_code=409,
-            )
+            raise InvalidTransition(f"Cannot change status from '{old_status}' to '{new_status}'.")
         if new_status == EventStatus.NOMINATIONS_OPEN and not (
             locked.nominations_open_at and locked.nominations_close_at
         ):
-            raise ApiError(
-                "Set the nomination window before opening nominations.", code="window_required"
-            )
+            raise WindowRequired("Set the nomination window before opening nominations.")
         if new_status == EventStatus.VOTING_OPEN and not (
             locked.voting_opens_at and locked.voting_closes_at
         ):
-            raise ApiError("Set the voting window before opening voting.", code="window_required")
+            raise WindowRequired("Set the voting window before opening voting.")
         locked.status = new_status
         if new_status == EventStatus.RESULTS_PUBLISHED:
             locked.results_published_at = timezone.now()

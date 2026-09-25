@@ -9,7 +9,7 @@ from rest_framework.response import Response
 from accounts.permissions import IsModerator
 from accounts.roles import MODERATOR, user_has_role
 from common.captcha import verify_captcha
-from common.exceptions import ApiError
+from common.exceptions import CaptchaFailed
 from common.ip import get_client_ip
 from events.models import Award, EventStatus
 
@@ -91,7 +91,7 @@ class NominationViewSet(
         """Submit a nomination (multipart, CAPTCHA-protected). It stays hidden until approved."""
         token = request.data.get("captcha_token", "") if hasattr(request.data, "get") else ""
         if not verify_captcha(token, get_client_ip(request)):
-            raise ApiError("CAPTCHA verification failed.", code="captcha_failed")
+            raise CaptchaFailed()
         serializer = self.get_serializer(data=request.data)
         serializer.is_valid(raise_exception=True)
         nomination = serializer.save()

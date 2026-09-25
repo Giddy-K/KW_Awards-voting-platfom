@@ -3,7 +3,7 @@ from django.utils import timezone
 
 from audit import services as audit
 from audit.models import AuditAction
-from common.exceptions import Conflict
+from common.exceptions import AlreadyReviewed
 
 from .models import Nomination, NominationStatus
 
@@ -16,9 +16,8 @@ def review_nomination(nomination, *, approve, reviewer, reason="", request=None)
     with transaction.atomic():
         locked = Nomination.objects.select_for_update().get(pk=nomination.pk)
         if locked.status != NominationStatus.PENDING:
-            raise Conflict(
-                f"This nomination has already been reviewed (status: {locked.status}).",
-                code="already_reviewed",
+            raise AlreadyReviewed(
+                f"This nomination has already been reviewed (status: {locked.status})."
             )
         locked.status = NominationStatus.APPROVED if approve else NominationStatus.REJECTED
         locked.reviewed_by = reviewer

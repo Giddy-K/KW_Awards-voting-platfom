@@ -5,7 +5,7 @@ from rest_framework import serializers
 
 from audit import services as audit
 from audit.models import AuditAction
-from common.exceptions import Conflict, NominationsClosed
+from common.exceptions import DuplicateNomination, NominationsClosed
 from common.phone import InvalidPhoneNumber, normalize_phone
 from common.serializers import PlainTextMixin
 from common.text import clean_text
@@ -199,10 +199,7 @@ class NominationSubmitSerializer(PlainTextMixin, serializers.Serializer):
             status__in=[NominationStatus.PENDING, NominationStatus.APPROVED],
         ).exists()
         if duplicate:
-            raise Conflict(
-                "This nominee has already been nominated for this award.",
-                code="duplicate_nomination",
-            )
+            raise DuplicateNomination()
         return attrs
 
     def create(self, validated_data):

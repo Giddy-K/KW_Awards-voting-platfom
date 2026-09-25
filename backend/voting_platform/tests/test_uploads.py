@@ -131,7 +131,8 @@ def test_api_rejects_bad_uploads_with_a_field_error(api):
         SimpleUploadedFile("a.gif", make_image_bytes(fmt="GIF"), content_type="image/gif"),
     ):
         response = submit(api, award, photo=bad)
-        assert response.status_code == 400 and "photo" in response.data, response.data
+        # Phase 2.3: validation errors nest under "fields" (common.exceptions.exception_handler).
+        assert response.status_code == 400 and "photo" in response.data["fields"], response.data
     assert Nominee.objects.count() == 0
 
 
@@ -149,4 +150,4 @@ def test_api_rejects_oversized_uploads(api, settings):
     settings.MAX_UPLOAD_BYTES = 300
     award = open_award()
     response = submit(api, award, photo=photo_upload(size=(300, 300)))
-    assert response.status_code == 400 and "photo" in response.data
+    assert response.status_code == 400 and "photo" in response.data["fields"]

@@ -31,7 +31,7 @@ class StaffTokenObtainPairSerializer(TokenObtainPairSerializer):
                 metadata={"reason": "not_staff"},
             )
             raise AuthenticationFailed(
-                self.error_messages["no_active_account"], "no_active_account"
+                self.error_messages["no_active_account"], code="no_active_account"
             )
         audit.log(AuditAction.STAFF_LOGIN, request=request, actor_user=self.user)
         return data

@@ -11,7 +11,7 @@ from rest_framework.exceptions import NotFound
 
 from audit import services as audit
 from audit.models import AuditAction
-from common.exceptions import AlreadyVoted, Conflict, VotingClosed
+from common.exceptions import AlreadyVoided, AlreadyVoted, VotingClosed
 from common.ip import get_client_ip
 from events.models import EventStatus
 from nominations.models import Nomination, NominationStatus
@@ -88,7 +88,7 @@ def void_vote(vote_id, *, by, reason, request=None):
         except Vote.DoesNotExist as exc:
             raise NotFound("Vote not found.") from exc
         if vote.voided_at is not None:
-            raise Conflict("This vote has already been voided.", code="already_voided")
+            raise AlreadyVoided()
         vote.void(by, reason)
         audit.log(
             AuditAction.VOTE_VOIDED,

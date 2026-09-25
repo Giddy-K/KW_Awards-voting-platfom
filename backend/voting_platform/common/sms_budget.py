@@ -19,9 +19,11 @@ from zoneinfo import ZoneInfo
 from django.conf import settings
 from django.core.cache import cache
 from django.utils import timezone
+from rest_framework import status
 
 from audit import services as audit
 from audit.models import AuditAction
+from common.exceptions import ApiError
 
 logger = logging.getLogger(__name__)
 
@@ -29,12 +31,22 @@ NAIROBI = ZoneInfo("Africa/Nairobi")
 _WARN_FRACTION = 0.8
 
 
-class SmsBudgetExhausted(Exception):
-    """The daily SMS budget has been used up. Callers should return 503 with Retry-After."""
+class SmsBudgetExhausted(ApiError):
+    """The daily SMS budget has been used up.
 
-    def __init__(self, retry_after):
+    An ``ApiError`` (Phase 2.3): raising it is enough -- the global exception handler
+    (``common.exceptions.exception_handler``) turns it into ``503 sms_unavailable`` and adds
+    the ``Retry-After`` header from ``retry_after``, the same way DRF's own handler does for
+    ``Throttled.wait``.
+    """
+
+    status_code = status.HTTP_503_SERVICE_UNAVAILABLE
+    default_detail = "SMS delivery is temporarily unavailable."
+    default_code = "sms_unavailable"
+
+    def __init__(self, retry_after, detail=None, code=None):
         self.retry_after = retry_after
-        super().__init__(f"SMS daily budget exhausted; retry after {retry_after}s")
+        super().__init__(detail=detail, code=code)
 
 
 def _nairobi_now():

@@ -258,6 +258,9 @@ REST_FRAMEWORK = {
     "DEFAULT_SCHEMA_CLASS": "drf_spectacular.openapi.AutoSchema",
     "DEFAULT_THROTTLE_CLASSES": [],
     "TEST_REQUEST_DEFAULT_FORMAT": "json",
+    # Phase 2.3: every non-2xx response body is {"code", "detail", "fields"} -- see
+    # common.exceptions.exception_handler and common.schema.ErrorResponse.
+    "EXCEPTION_HANDLER": "common.exceptions.exception_handler",
 }
 
 # --- Auth tokens ------------------------------------------------------------
