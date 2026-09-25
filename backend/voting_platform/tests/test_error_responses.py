@@ -74,7 +74,9 @@ def test_a_representative_sample_of_error_responses_match_the_schema_and_the_enu
     check(request_code(api, "0712345678"), 400)  # captcha_failed
     settings.CAPTCHA_BACKEND = "dummy"
     check(verify(api, "000000"), 400)  # invalid_otp (no active challenge)
-    check(moderator.post(f"/api/v1/nominations/{open_nomination().id}/reject/", {}), 400)  # blank reason
+    check(
+        moderator.post(f"/api/v1/nominations/{open_nomination().id}/reject/", {}), 400
+    )  # blank reason
     check(set_status(admin, make_event(status=EventStatus.DRAFT), "bogus"), 400)  # bad enum value
 
     # --- 401: no/invalid credentials, and no_active_account (wrong staff credentials) ---
@@ -127,7 +129,9 @@ def test_a_representative_sample_of_error_responses_match_the_schema_and_the_enu
     check(submit(api, award), 409)  # duplicate_nomination
     dup_nomination = Nomination.objects.get(pk=resp1.data["id"])
     assert moderator.post(f"/api/v1/nominations/{dup_nomination.id}/approve/").status_code == 200
-    check(moderator.post(f"/api/v1/nominations/{dup_nomination.id}/approve/"), 409)  # already_reviewed
+    check(
+        moderator.post(f"/api/v1/nominations/{dup_nomination.id}/approve/"), 409
+    )  # already_reviewed
     live_event = make_event(status=EventStatus.DRAFT)
     check(set_status(admin, live_event, "voting_open"), 409)  # invalid_transition
     votable_event = nomination.award.category.event
