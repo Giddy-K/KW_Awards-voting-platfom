@@ -45,6 +45,20 @@ FRONTEND_URL = env("FRONTEND_URL")
 CORS_ALLOWED_ORIGINS = env.list("CORS_ALLOWED_ORIGINS", default=[])
 CSRF_TRUSTED_ORIGINS = env.list("CSRF_TRUSTED_ORIGINS", default=[])
 
+# The staff refresh-token cookie (accounts.views) is only ever sent to the origins named
+# above, so credentialed cross-origin requests are safe: CORS_ALLOWED_ORIGINS is always an
+# explicit list (never a wildcard), which django-cors-headers requires when credentials are
+# allowed. See .env.example for the SameSite implications for where the frontend is hosted.
+CORS_ALLOW_CREDENTIALS = True
+
+# Name and behaviour of the HttpOnly cookie that carries the staff refresh token (never the
+# response body). Path-scoped to the auth endpoints only, so it isn't sent on ordinary API
+# calls. Secure is forced True in prod (settings/prod.py).
+REFRESH_COOKIE_NAME = env("REFRESH_COOKIE_NAME", default="kw_refresh")
+REFRESH_COOKIE_PATH = "/api/v1/auth/"
+REFRESH_COOKIE_SAMESITE = "Strict"
+REFRESH_COOKIE_SECURE = env.bool("REFRESH_COOKIE_SECURE", default=False)
+
 # The reverse-proxy chain in front of the app: IPs or CIDRs, one per hop, outermost first and
 # ending with the proxy that connects to this server. Empty means X-Forwarded-For is ignored
 # and the socket peer address is the client IP. See common/ip.py.

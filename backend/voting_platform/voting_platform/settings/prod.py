@@ -16,6 +16,7 @@ from .base import (
     ALLOWED_HOSTS,
     CACHE_URL,
     CAPTCHA_BACKEND,
+    CORS_ALLOWED_ORIGINS,
     DATABASES,
     FRONTEND_URL,
     MIDDLEWARE,
@@ -33,6 +34,9 @@ _required = {
     "FRONTEND_URL": FRONTEND_URL,
     "database name (DATABASE_URL or DB_NAME)": DATABASES["default"].get("NAME"),
     "database user (DATABASE_URL or DB_USER)": DATABASES["default"].get("USER"),
+    # CORS_ALLOW_CREDENTIALS is always True (base.py), so the staff refresh cookie is only
+    # ever sent to origins named here; an empty list would silently allow no frontend at all.
+    "CORS_ALLOWED_ORIGINS": CORS_ALLOWED_ORIGINS,
 }
 _missing = [name for name, value in _required.items() if not value]
 if _missing:
@@ -77,6 +81,7 @@ SECURE_HSTS_PRELOAD = env.bool("SECURE_HSTS_PRELOAD", default=False)
 SILENCED_SYSTEM_CHECKS = ["security.W021"]
 SESSION_COOKIE_SECURE = True
 CSRF_COOKIE_SECURE = True
+REFRESH_COOKIE_SECURE = True
 SECURE_CONTENT_TYPE_NOSNIFF = True
 
 # --- Static files (WhiteNoise) ---------------------------------------------

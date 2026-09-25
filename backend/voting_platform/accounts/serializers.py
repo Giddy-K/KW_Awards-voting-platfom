@@ -37,8 +37,10 @@ class StaffTokenObtainPairSerializer(TokenObtainPairSerializer):
         return data
 
 
-class LogoutSerializer(serializers.Serializer):
-    refresh = serializers.CharField(write_only=True)
+class AccessTokenSerializer(serializers.Serializer):
+    """What login/refresh return: the access token only. The refresh token is a cookie."""
+
+    access = serializers.CharField(read_only=True)
 
 
 class MeSerializer(serializers.ModelSerializer):

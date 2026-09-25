@@ -47,7 +47,9 @@ def test_seed_creates_one_user_per_role_that_can_log_in(settings):
     }
     for email, roles in expected.items():
         token = api.post(
-            "/api/v1/auth/token/", {"email": email, "password": "a-Strong-demo-pass-1"}
+            "/api/v1/auth/token/",
+            {"email": email, "password": "a-Strong-demo-pass-1"},
+            HTTP_X_REQUESTED_WITH="XMLHttpRequest",
         )
         assert token.status_code == 200, email
         api.credentials(HTTP_AUTHORIZATION=f"Bearer {token.data['access']}")

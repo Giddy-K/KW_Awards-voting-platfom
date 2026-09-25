@@ -1,6 +1,7 @@
 """Staff accounts and authentication (AUDIT F-05, F-11, F-21, F-22)."""
 
 import pytest
+from django.conf import settings
 from django.contrib.auth import get_user_model
 from django.contrib.auth.models import Group
 from django.contrib.auth.password_validation import validate_password
@@ -20,9 +21,23 @@ REFRESH_URL = "/api/v1/auth/refresh/"
 LOGOUT_URL = "/api/v1/auth/logout/"
 ME_URL = "/api/v1/auth/me/"
 
+# Required by HasAjaxHeader on the cookie endpoints (Phase 2.1 CSRF defence).
+AJAX = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
 
-def login(api, email, password=PASSWORD):
-    return api.post(TOKEN_URL, {"email": email, "password": password})
+
+def login(api, email, password=PASSWORD, **extra):
+    return api.post(TOKEN_URL, {"email": email, "password": password}, **AJAX, **extra)
+
+
+def refresh_cookie(response):
+    """The Morsel for the refresh cookie on a login/refresh response, or None.
+
+    Note: Django's test client cookie jar *mutates the same Morsel object in place* on a
+    later ``client.cookies[name] = ...`` assignment, rather than replacing it. Read
+    ``.value`` off the Morsel immediately; don't hold the Morsel itself across further
+    requests/assignments on the same client, or it will silently change under you.
+    """
+    return response.cookies.get(settings.REFRESH_COOKIE_NAME)
 
 
 def test_f05_no_public_user_endpoints(api):
@@ -58,13 +73,30 @@ def test_me_reports_superuser_role():
     assert staff_client(su).get(ME_URL).data["roles"][0] == "superuser"
 
 
-def test_login_returns_working_token_pair(api):
+def test_login_returns_access_token_only_and_sets_the_refresh_cookie(api):
+    """Phase 2.1: the refresh token is never in the response body, only an HttpOnly cookie."""
     user = make_user(MODERATOR)
     response = login(api, user.email)
     assert response.status_code == 200
-    assert set(response.data) == {"access", "refresh"}
+    assert set(response.data) == {"access"}
+    assert "refresh" not in response.content.decode()
+
+    cookie = refresh_cookie(response)
+    assert cookie is not None and cookie.value
+    assert cookie["httponly"] is True
+    assert cookie["samesite"] == "Strict"
+    assert cookie["path"] == "/api/v1/auth/"
+    assert bool(cookie["secure"]) is settings.REFRESH_COOKIE_SECURE  # False in dev/test
+
     api.credentials(HTTP_AUTHORIZATION=f"Bearer {response.data['access']}")
     assert api.get(ME_URL).data["email"] == user.email
+
+
+def test_login_requires_the_ajax_header(api):
+    user = make_user()
+    response = api.post(TOKEN_URL, {"email": user.email, "password": PASSWORD})
+    assert response.status_code == 403
+    assert refresh_cookie(response) is None
 
 
 def test_f11_login_is_case_insensitive_on_email(api):
@@ -93,44 +125,86 @@ def test_staff_logins_are_audited(api):
     assert "password" not in str(failed.metadata).lower()
 
 
-def test_refresh_rotates_and_blacklists_the_old_token(api):
+def test_refresh_reads_the_cookie_rotates_it_and_blacklists_the_old_token(api):
     user = make_user()
-    pair = login(api, user.email).data
-    first = api.post(REFRESH_URL, {"refresh": pair["refresh"]})
+    login_response = login(api, user.email)
+    old_refresh = refresh_cookie(login_response).value
+
+    # api's cookie jar now carries the refresh cookie automatically, like a browser.
+    first = api.post(REFRESH_URL, **AJAX)
     assert first.status_code == 200
-    assert first.data["refresh"] != pair["refresh"]
-    # Re-using the rotated (now blacklisted) token must fail.
-    assert api.post(REFRESH_URL, {"refresh": pair["refresh"]}).status_code == 401
+    assert set(first.data) == {"access"}
+    new_refresh = refresh_cookie(first).value  # read .value now; see refresh_cookie's note
+    assert new_refresh != old_refresh
+
+    # Re-using the rotated (now blacklisted) old token, presented as the cookie, must fail.
+    api.cookies[settings.REFRESH_COOKIE_NAME] = old_refresh
+    assert api.post(REFRESH_URL, **AJAX).status_code == 401
+
+    # The new one still works.
+    api.cookies[settings.REFRESH_COOKIE_NAME] = new_refresh
+    assert api.post(REFRESH_URL, **AJAX).status_code == 200
 
 
-def test_logout_blacklists_refresh_token(api):
+def test_refresh_without_a_cookie_or_with_the_ajax_header_missing(api):
+    no_cookie = api.post(REFRESH_URL, **AJAX)
+    assert no_cookie.status_code == 401 and no_cookie.data["code"] == "token_not_valid"
+
+    login(api, make_user().email)
+    no_header = api.post(REFRESH_URL)
+    assert no_header.status_code == 403
+
+
+def test_logout_blacklists_the_refresh_cookie_and_clears_it(api):
     user = make_user()
-    pair = login(api, user.email).data
+    login_response = login(api, user.email)
+    old_refresh = refresh_cookie(login_response).value
     client = staff_client(user)
-    assert client.post(LOGOUT_URL, {"refresh": pair["refresh"]}).status_code == 204
-    assert api.post(REFRESH_URL, {"refresh": pair["refresh"]}).status_code == 401
+    client.cookies[settings.REFRESH_COOKIE_NAME] = old_refresh
+
+    logout_response = client.post(LOGOUT_URL, **AJAX)
+    assert logout_response.status_code == 204
+    cleared = refresh_cookie(logout_response)
+    assert cleared is not None and cleared.value == "" and cleared["max-age"] == 0
+
+    api.cookies[settings.REFRESH_COOKIE_NAME] = old_refresh
+    assert api.post(REFRESH_URL, **AJAX).status_code == 401
 
 
-def test_logout_cannot_revoke_someone_elses_token(api):
+def test_logout_never_blacklists_a_cookie_belonging_to_someone_else(api):
+    """The cookie is HttpOnly, so a client can no longer choose whose token to send; the
+    view still checks ownership defensively in case a foreign value ends up in the cookie."""
     victim, attacker = make_user(), make_user()
-    pair = login(api, victim.email).data
-    response = staff_client(attacker).post(LOGOUT_URL, {"refresh": pair["refresh"]})
-    assert response.status_code == 400
-    # The victim's token still works.
-    assert api.post(REFRESH_URL, {"refresh": pair["refresh"]}).status_code == 200
+    victim_refresh = refresh_cookie(login(api, victim.email)).value
+
+    attacker_client = staff_client(attacker)
+    attacker_client.cookies[settings.REFRESH_COOKIE_NAME] = victim_refresh
+    response = attacker_client.post(LOGOUT_URL, **AJAX)
+    assert response.status_code == 204  # logout is idempotent even when nothing was revoked
+
+    # The victim's token is untouched.
+    api.cookies[settings.REFRESH_COOKIE_NAME] = victim_refresh
+    assert api.post(REFRESH_URL, **AJAX).status_code == 200
 
 
-def test_logout_requires_authentication_and_valid_token(api):
-    assert api.post(LOGOUT_URL, {"refresh": "x"}).status_code == 401
-    assert staff_client(make_user()).post(LOGOUT_URL, {"refresh": "garbage"}).status_code == 400
-    assert staff_client(make_user()).post(LOGOUT_URL, {}).status_code == 400
+def test_logout_is_idempotent_with_no_cookie_and_tolerates_a_garbage_one(api):
+    user = make_user()
+    client = staff_client(user)
+    assert client.post(LOGOUT_URL, **AJAX).status_code == 204  # nothing to revoke
+    client.cookies[settings.REFRESH_COOKIE_NAME] = "not-a-real-token"
+    assert client.post(LOGOUT_URL, **AJAX).status_code == 204  # tolerated, still clears
+
+
+def test_logout_requires_authentication_and_the_ajax_header(api):
+    assert api.post(LOGOUT_URL, **AJAX).status_code == 401
+    assert staff_client(make_user()).post(LOGOUT_URL).status_code == 403
 
 
 def test_voter_token_is_not_accepted_as_staff_auth(api):
     voter = make_voter()
     client = voter_client(voter)
     assert client.get(ME_URL).status_code == 401
-    assert client.post(LOGOUT_URL, {"refresh": "x"}).status_code == 401
+    assert client.post(LOGOUT_URL, **AJAX).status_code == 401
 
 
 def test_garbage_and_missing_tokens_are_unauthorized(api):
@@ -201,3 +275,18 @@ def test_user_has_role_matrix():
     assert not user_has_role(None, MODERATOR)
     inactive = make_user(MODERATOR, is_active=False)
     assert not user_has_role(inactive, MODERATOR)
+
+
+# --- CORS credentials (Phase 2.1) --------------------------------------------------------
+
+
+def test_cors_allows_credentials_only_for_an_allowed_origin(api):
+    assert settings.CORS_ALLOW_CREDENTIALS is True
+    allowed_origin = settings.CORS_ALLOWED_ORIGINS[0]
+    ok = api.get(ME_URL, HTTP_ORIGIN=allowed_origin)
+    assert ok.headers.get("Access-Control-Allow-Origin") == allowed_origin
+    assert ok.headers.get("Access-Control-Allow-Credentials") == "true"
+
+    other = api.get(ME_URL, HTTP_ORIGIN="https://not-an-allowed-origin.example")
+    assert "Access-Control-Allow-Origin" not in other.headers
+    assert "Access-Control-Allow-Credentials" not in other.headers

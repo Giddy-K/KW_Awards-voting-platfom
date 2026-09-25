@@ -99,13 +99,18 @@ def test_votes_are_limited_per_voter_and_per_ip(settings):
 def test_staff_login_is_limited_per_ip(api, settings):
     rates(settings, staff_login_ip="3/15m")
     user = make_user()
+    ajax = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
     statuses = [
-        api.post("/api/v1/auth/token/", {"email": user.email, "password": "wrong"}).status_code
+        api.post(
+            "/api/v1/auth/token/", {"email": user.email, "password": "wrong"}, **ajax
+        ).status_code
         for _ in range(4)
     ]
     assert statuses == [401, 401, 401, 429]
     assert (
-        api.post("/api/v1/auth/token/", {"email": user.email, "password": PASSWORD}).status_code
+        api.post(
+            "/api/v1/auth/token/", {"email": user.email, "password": PASSWORD}, **ajax
+        ).status_code
         == 429
     )
 

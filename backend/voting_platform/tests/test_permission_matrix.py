@@ -131,11 +131,15 @@ class Case:
     expected: dict
     body: Callable[[World], dict] = field(default=lambda w: {})
     fmt: str = "json"
+    extra_headers: dict = field(default_factory=dict)
 
 
 def uid():
     return uuid.uuid4().hex[:10]
 
+
+# Required by HasAjaxHeader on the cookie-based auth endpoints (Phase 2.1).
+AJAX = {"HTTP_X_REQUESTED_WITH": "XMLHttpRequest"}
 
 CASES = [
     # --- auth
@@ -144,15 +148,19 @@ CASES = [
         "auth-logout",
         "post",
         lambda w: "/api/v1/auth/logout/",
-        expect(401, 401, 400, 400, 400),
-        lambda w: {"refresh": "not-a-token"},
+        # No refresh cookie is present for any of these principals in this test, so an
+        # authenticated caller's logout is a no-op (idempotent): 204, not an error.
+        expect(401, 401, 204, 204, 204),
+        extra_headers=AJAX,
     ),
     Case(
         "auth-refresh",
         "post",
         lambda w: "/api/v1/auth/refresh/",
+        # Purely cookie-based; no cookie is present, so every principal gets the same 401,
+        # regardless of their own staff/voter status.
         everyone(401),
-        lambda w: {"refresh": "not-a-token"},
+        extra_headers=AJAX,
     ),
     Case(
         "auth-token",
@@ -160,6 +168,7 @@ CASES = [
         lambda w: "/api/v1/auth/token/",
         everyone(401),
         lambda w: {"email": "nobody@example.com", "password": "wrong"},
+        extra_headers=AJAX,
     ),
     # --- events
     Case("events-list", "get", lambda w: "/api/v1/events/", PUBLIC),
@@ -381,7 +390,9 @@ CASES = [
 @pytest.mark.parametrize("case", CASES, ids=[c.name for c in CASES])
 def test_endpoint_authorization_matrix(world, case, principal):
     client = client_for(principal)
-    response = getattr(client, case.method)(case.url(world), case.body(world), format=case.fmt)
+    response = getattr(client, case.method)(
+        case.url(world), case.body(world), format=case.fmt, **case.extra_headers
+    )
     expected = case.expected[principal]
     assert response.status_code == expected, (
         f"{case.method.upper()} {case.name} as {principal}: "
