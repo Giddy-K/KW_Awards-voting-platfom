@@ -20,6 +20,7 @@ class AuditAction(models.TextChoices):
     STAFF_LOGIN = "staff.login", "Staff login"
     STAFF_LOGIN_FAILED = "staff.login_failed", "Staff login failed"
     PERMISSION_DENIED = "permission.denied", "Permission denied"
+    SMS_BUDGET_EXHAUSTED = "sms.budget_exhausted", "SMS daily budget exhausted"
 
 
 class AppendOnlyError(PermissionDenied):

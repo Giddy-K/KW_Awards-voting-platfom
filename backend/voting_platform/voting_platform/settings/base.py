@@ -279,11 +279,18 @@ OTP_LENGTH = 6
 OTP_TTL_SECONDS = env.int("OTP_TTL_SECONDS", default=300)  # 5 minutes
 OTP_MAX_ATTEMPTS = env.int("OTP_MAX_ATTEMPTS", default=5)
 # Phase 2.2: only a MOBILE number in one of these regions (ISO 3166-1 alpha-2, comma-separated)
-# may request an OTP -- see common.phone.is_allowed_phone and voting.views.OTPRequestView. This
-# is a deliberate, documented exception to the OTP flow's otherwise phone-existence-blind
+# may request an OTP -- see common.phone.normalize_phone_strict and voting.views.OTPRequestView.
+# This is a deliberate, documented exception to the OTP flow's otherwise phone-existence-blind
 # responses: whether a number is a valid Kenyan mobile is public information, unlike whether a
 # specific number is a registered voter.
 OTP_ALLOWED_REGIONS = env.list("OTP_ALLOWED_REGIONS", default=["KE"])
+
+# Phase 2.2: a global ceiling on SMS sent per Nairobi calendar day (a shared, cache-backed
+# counter -- see common.sms_budget). Guards against runaway provider cost from a bug or an
+# attack; 0 disables the budget. A WARNING is logged once at 80% of the limit; ERROR plus an
+# audit entry (SMS_BUDGET_EXHAUSTED) once the limit itself is reached, and OTP requests then
+# get 503 sms_unavailable until the next Nairobi day.
+SMS_DAILY_LIMIT = env.int("SMS_DAILY_LIMIT", default=5000)
 
 
 # --- Abuse controls ---------------------------------------------------------

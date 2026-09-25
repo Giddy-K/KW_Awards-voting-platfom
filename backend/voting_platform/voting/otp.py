@@ -27,6 +27,7 @@ from audit.models import AuditAction
 from common.exceptions import ApiError
 from common.phone import mask_phone
 from common.sms import SmsError, send_sms
+from common.sms_budget import reserve as reserve_sms_budget
 
 from .models import OTPChallenge, OTPPurpose, Voter
 
@@ -59,6 +60,11 @@ def request_otp(phone_e164, *, request):
             metadata={"phone_masked": mask_phone(phone_e164), "sent": False, "blocked": True},
         )
         return
+    # Phase 2.2: enforce the global daily SMS budget before doing any work that assumes the
+    # code will actually be sent (raises SmsBudgetExhausted; OTPRequestView turns that into a
+    # 503). Checked here, not at the view, so a blocked voter's silent no-SMS request above
+    # never consumes budget it doesn't use.
+    reserve_sms_budget(phone_masked=mask_phone(phone_e164), request=request)
     now = timezone.now()
     code = generate_code()
     with transaction.atomic():

@@ -12,6 +12,7 @@ from common.captcha import verify_captcha
 from common.exceptions import ApiError, UnsupportedPhoneNumber
 from common.ip import get_client_ip
 from common.phone import InvalidPhoneNumber, normalize_phone, normalize_phone_strict
+from common.sms_budget import SmsBudgetExhausted
 
 from . import otp, services
 from .authentication import IsVoter, VoterOrStaffAuthentication, issue_voter_token
@@ -66,7 +67,14 @@ class OTPRequestView(APIView):
         token = serializer.validated_data.get("captcha_token", "")
         if not verify_captcha(token, get_client_ip(request)):
             raise ApiError("CAPTCHA verification failed.", code="captcha_failed")
-        otp.request_otp(phone, request=request)
+        try:
+            otp.request_otp(phone, request=request)
+        except SmsBudgetExhausted as exc:
+            return Response(
+                {"detail": "SMS delivery is temporarily unavailable.", "code": "sms_unavailable"},
+                status=status.HTTP_503_SERVICE_UNAVAILABLE,
+                headers={"Retry-After": str(exc.retry_after)},
+            )
         return Response(OTP_REQUEST_RESPONSE, status=status.HTTP_202_ACCEPTED)
 
 
